@@ -16,27 +16,31 @@ class PartnersApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'POST /partners/{id}' operation and returns the [Response].
+  /// Create a partner
+  ///
+  /// Create a new partner to share assets with.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
-  /// * [String] id (required):
-  Future<Response> createPartnerWithHttpInfo(String id,) async {
+  /// * [PartnerCreateDto] partnerCreateDto (required):
+  Future<Response> createPartnerWithHttpInfo(PartnerCreateDto partnerCreateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/partners/{id}'
-      .replaceAll('{id}', id);
+    final apiPath = r'/partners';
 
     // ignore: prefer_final_locals
-    Object? postBody;
+    Object? postBody = partnerCreateDto;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
     final formParams = <String, String>{};
 
-    const contentTypes = <String>[];
+    const contentTypes = <String>['application/json'];
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -46,11 +50,15 @@ class PartnersApi {
     );
   }
 
+  /// Create a partner
+  ///
+  /// Create a new partner to share assets with.
+  ///
   /// Parameters:
   ///
-  /// * [String] id (required):
-  Future<PartnerResponseDto?> createPartner(String id,) async {
-    final response = await createPartnerWithHttpInfo(id,);
+  /// * [PartnerCreateDto] partnerCreateDto (required):
+  Future<PartnerResponseDto?> createPartner(PartnerCreateDto partnerCreateDto,) async {
+    final response = await createPartnerWithHttpInfo(partnerCreateDto,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -64,13 +72,75 @@ class PartnersApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /partners' operation and returns the [Response].
+  /// Create a partner
+  ///
+  /// Create a new partner to share assets with.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<Response> createPartnerDeprecatedWithHttpInfo(String id,) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/partners/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'POST',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Create a partner
+  ///
+  /// Create a new partner to share assets with.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  Future<PartnerResponseDto?> createPartnerDeprecated(String id,) async {
+    final response = await createPartnerDeprecatedWithHttpInfo(id,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PartnerResponseDto',) as PartnerResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Retrieve partners
+  ///
+  /// Retrieve a list of partners with whom assets are shared.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [PartnerDirection] direction (required):
   Future<Response> getPartnersWithHttpInfo(PartnerDirection direction,) async {
     // ignore: prefer_const_declarations
-    final path = r'/partners';
+    final apiPath = r'/partners';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -85,7 +155,7 @@ class PartnersApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -95,6 +165,10 @@ class PartnersApi {
     );
   }
 
+  /// Retrieve partners
+  ///
+  /// Retrieve a list of partners with whom assets are shared.
+  ///
   /// Parameters:
   ///
   /// * [PartnerDirection] direction (required):
@@ -116,13 +190,18 @@ class PartnersApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /partners/{id}' operation and returns the [Response].
+  /// Remove a partner
+  ///
+  /// Stop sharing assets with a partner.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> removePartnerWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/partners/{id}'
+    final apiPath = r'/partners/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -136,7 +215,7 @@ class PartnersApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -146,6 +225,10 @@ class PartnersApi {
     );
   }
 
+  /// Remove a partner
+  ///
+  /// Stop sharing assets with a partner.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -156,19 +239,24 @@ class PartnersApi {
     }
   }
 
-  /// Performs an HTTP 'PUT /partners/{id}' operation and returns the [Response].
+  /// Update a partner
+  ///
+  /// Specify whether a partner's assets should appear in the user's timeline.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   ///
-  /// * [UpdatePartnerDto] updatePartnerDto (required):
-  Future<Response> updatePartnerWithHttpInfo(String id, UpdatePartnerDto updatePartnerDto,) async {
+  /// * [PartnerUpdateDto] partnerUpdateDto (required):
+  Future<Response> updatePartnerWithHttpInfo(String id, PartnerUpdateDto partnerUpdateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/partners/{id}'
+    final apiPath = r'/partners/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
-    Object? postBody = updatePartnerDto;
+    Object? postBody = partnerUpdateDto;
 
     final queryParams = <QueryParam>[];
     final headerParams = <String, String>{};
@@ -178,7 +266,7 @@ class PartnersApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -188,13 +276,17 @@ class PartnersApi {
     );
   }
 
+  /// Update a partner
+  ///
+  /// Specify whether a partner's assets should appear in the user's timeline.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   ///
-  /// * [UpdatePartnerDto] updatePartnerDto (required):
-  Future<PartnerResponseDto?> updatePartner(String id, UpdatePartnerDto updatePartnerDto,) async {
-    final response = await updatePartnerWithHttpInfo(id, updatePartnerDto,);
+  /// * [PartnerUpdateDto] partnerUpdateDto (required):
+  Future<PartnerResponseDto?> updatePartner(String id, PartnerUpdateDto partnerUpdateDto,) async {
+    final response = await updatePartnerWithHttpInfo(id, partnerUpdateDto,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

@@ -14,24 +14,26 @@ class BackupAssetInfoTable extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isManualUpload = ref.watch(
+      backupProvider.select((value) => value.backupProgress == BackUpProgressEnum.manualInProgress),
+    );
+
+    final isUploadInProgress = ref.watch(
       backupProvider.select(
-        (value) => value.backupProgress == BackUpProgressEnum.manualInProgress,
+        (value) =>
+            value.backupProgress == BackUpProgressEnum.inProgress ||
+            value.backupProgress == BackUpProgressEnum.inBackground ||
+            value.backupProgress == BackUpProgressEnum.manualInProgress,
       ),
     );
 
     final asset = isManualUpload
-        ? ref.watch(
-            manualUploadProvider.select((value) => value.currentUploadAsset),
-          )
+        ? ref.watch(manualUploadProvider.select((value) => value.currentUploadAsset))
         : ref.watch(backupProvider.select((value) => value.currentUploadAsset));
 
     return Padding(
       padding: const EdgeInsets.only(top: 8.0),
       child: Table(
-        border: TableBorder.all(
-          color: context.colorScheme.outlineVariant,
-          width: 1,
-        ),
+        border: TableBorder.all(color: context.colorScheme.outlineVariant, width: 1),
         children: [
           TableRow(
             children: [
@@ -39,16 +41,19 @@ class BackupAssetInfoTable extends ConsumerWidget {
                 verticalAlignment: TableCellVerticalAlignment.middle,
                 child: Padding(
                   padding: const EdgeInsets.all(6.0),
-                  child: Text(
-                    'backup_controller_page_filename',
-                    style: TextStyle(
-                      color: context.colorScheme.onSurfaceSecondary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10.0,
-                    ),
-                  ).tr(
-                    args: [asset.fileName, asset.fileType.toLowerCase()],
-                  ),
+                  child:
+                      Text(
+                        'backup_controller_page_filename',
+                        style: TextStyle(
+                          color: context.colorScheme.onSurfaceSecondary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10.0,
+                        ),
+                      ).tr(
+                        namedArgs: isUploadInProgress
+                            ? {'filename': asset.fileName, 'size': asset.fileType.toLowerCase()}
+                            : {'filename': "-", 'size': "-"},
+                      ),
                 ),
               ),
             ],
@@ -66,9 +71,7 @@ class BackupAssetInfoTable extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 10.0,
                     ),
-                  ).tr(
-                    args: [_getAssetCreationDate(asset)],
-                  ),
+                  ).tr(namedArgs: {'date': isUploadInProgress ? _getAssetCreationDate(asset) : "-"}),
                 ),
               ),
             ],
@@ -85,7 +88,7 @@ class BackupAssetInfoTable extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                       fontSize: 10.0,
                     ),
-                  ).tr(args: [asset.id]),
+                  ).tr(namedArgs: {'id': isUploadInProgress ? asset.id : "-"}),
                 ),
               ),
             ],

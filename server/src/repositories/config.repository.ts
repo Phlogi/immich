@@ -7,9 +7,7 @@ import { Request, Response } from 'express';
 import { RedisOptions } from 'ioredis';
 import { CLS_ID, ClsModuleOptions } from 'nestjs-cls';
 import { OpenTelemetryModuleOptions } from 'nestjs-otel/lib/interfaces';
-import { join, resolve } from 'node:path';
-import { parse } from 'pg-connection-string';
-import { Notice } from 'postgres';
+import { join } from 'node:path';
 import { citiesFile, excludePaths, IWorker } from 'src/constants';
 import { Telemetry } from 'src/decorators';
 import { EnvDto } from 'src/dtos/env.dto';
@@ -24,21 +22,6 @@ import {
 } from 'src/enum';
 import { DatabaseConnectionParams, VectorExtension } from 'src/types';
 import { setDifference } from 'src/utils/set';
-import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions.js';
-
-type Ssl = 'require' | 'allow' | 'prefer' | 'verify-full' | boolean | object;
-type PostgresConnectionConfig = {
-  host?: string;
-  password?: string;
-  user?: string;
-  port?: number;
-  database?: string;
-  client_encoding?: string;
-  ssl?: Ssl;
-  application_name?: string;
-  fallback_application_name?: string;
-  options?: string;
-};
 
 export interface EnvData {
   host?: string;
@@ -73,9 +56,9 @@ export interface EnvData {
   };
 
   database: {
-    config: { typeorm: PostgresConnectionOptions & DatabaseConnectionParams; kysely: PostgresConnectionConfig };
+    config: DatabaseConnectionParams;
     skipMigrations: boolean;
-    vectorExtension: VectorExtension;
+    vectorExtension?: VectorExtension;
   };
 
   licensePublicKey: {
@@ -102,9 +85,14 @@ export interface EnvData {
       root: string;
       indexHtml: string;
     };
+    corePlugin: string;
   };
 
   redis: RedisOptions;
+
+  setup: {
+    allow: boolean;
+  };
 
   telemetry: {
     apiPort: number;
@@ -114,9 +102,17 @@ export interface EnvData {
 
   storage: {
     ignoreMountCheckErrors: boolean;
+    mediaLocation?: string;
   };
 
   workers: ImmichWorker[];
+
+  plugins: {
+    external: {
+      allow: boolean;
+      installFolder?: string;
+    };
+  };
 
   noColor: boolean;
   nodeVersion?: string;
@@ -144,19 +140,18 @@ const asSet = <T>(value: string | undefined, defaults: T[]) => {
   return new Set(values.length === 0 ? defaults : (values as T[]));
 };
 
-const isValidSsl = (ssl?: string | boolean | object): ssl is Ssl =>
-  typeof ssl !== 'string' || ssl === 'require' || ssl === 'allow' || ssl === 'prefer' || ssl === 'verify-full';
-
 const getEnv = (): EnvData => {
   const dto = plainToInstance(EnvDto, process.env);
   const errors = validateSync(dto);
   if (errors.length > 0) {
-    throw new Error(
-      `Invalid environment variables: ${errors.map((error) => `${error.property}=${error.value}`).join(', ')}`,
-    );
+    const messages = [`Invalid environment variables: `];
+    for (const error of errors) {
+      messages.push(`  - ${error.property}=${error.value} (${Object.values(error.constraints || {}).join(', ')})`);
+    }
+    throw new Error(messages.join('\n'));
   }
 
-  const includedWorkers = asSet(dto.IMMICH_WORKERS_INCLUDE, [ImmichWorker.API, ImmichWorker.MICROSERVICES]);
+  const includedWorkers = asSet(dto.IMMICH_WORKERS_INCLUDE, [ImmichWorker.Api, ImmichWorker.Microservices]);
   const excludedWorkers = asSet(dto.IMMICH_WORKERS_EXCLUDE, []);
   const workers = [...setDifference(includedWorkers, excludedWorkers)];
   for (const worker of workers) {
@@ -165,17 +160,13 @@ const getEnv = (): EnvData => {
     }
   }
 
-  const environment = dto.IMMICH_ENV || ImmichEnvironment.PRODUCTION;
-  const isProd = environment === ImmichEnvironment.PRODUCTION;
+  const environment = dto.IMMICH_ENV || ImmichEnvironment.Production;
+  const isProd = environment === ImmichEnvironment.Production;
   const buildFolder = dto.IMMICH_BUILD_DATA || '/build';
   const folders = {
-    // eslint-disable-next-line unicorn/prefer-module
-    dist: resolve(`${__dirname}/..`),
     geodata: join(buildFolder, 'geodata'),
     web: join(buildFolder, 'www'),
   };
-
-  const databaseUrl = dto.DB_URL;
 
   let redisConfig = {
     host: dto.REDIS_HOSTNAME || 'redis',
@@ -208,57 +199,33 @@ const getEnv = (): EnvData => {
     }
   }
 
-  const parts = {
-    connectionType: 'parts',
-    host: dto.DB_HOSTNAME || 'database',
-    port: dto.DB_PORT || 5432,
-    username: dto.DB_USERNAME || 'postgres',
-    password: dto.DB_PASSWORD || 'postgres',
-    database: dto.DB_DATABASE_NAME || 'immich',
-  } as const;
+  const databaseConnection: DatabaseConnectionParams = dto.DB_URL
+    ? { connectionType: 'url', url: dto.DB_URL }
+    : {
+        connectionType: 'parts',
+        host: dto.DB_HOSTNAME || 'database',
+        port: dto.DB_PORT || 5432,
+        username: dto.DB_USERNAME || 'postgres',
+        password: dto.DB_PASSWORD || 'postgres',
+        database: dto.DB_DATABASE_NAME || 'immich',
+        ssl: dto.DB_SSL_MODE || undefined,
+      };
 
-  let parsedOptions: PostgresConnectionConfig = parts;
-  if (dto.DB_URL) {
-    const parsed = parse(dto.DB_URL);
-    if (!isValidSsl(parsed.ssl)) {
-      throw new Error(`Invalid ssl option: ${parsed.ssl}`);
+  let vectorExtension: VectorExtension | undefined;
+  switch (dto.DB_VECTOR_EXTENSION) {
+    case 'pgvector': {
+      vectorExtension = DatabaseExtension.Vector;
+      break;
     }
-
-    parsedOptions = {
-      ...parsed,
-      ssl: parsed.ssl,
-      host: parsed.host ?? undefined,
-      port: parsed.port ? Number(parsed.port) : undefined,
-      database: parsed.database ?? undefined,
-    };
+    case 'pgvecto.rs': {
+      vectorExtension = DatabaseExtension.Vectors;
+      break;
+    }
+    case 'vectorchord': {
+      vectorExtension = DatabaseExtension.VectorChord;
+      break;
+    }
   }
-
-  const driverOptions = {
-    ...parsedOptions,
-    onnotice: (notice: Notice) => {
-      if (notice['severity'] !== 'NOTICE') {
-        console.warn('Postgres notice:', notice);
-      }
-    },
-    max: 10,
-    types: {
-      date: {
-        to: 1184,
-        from: [1082, 1114, 1184],
-        serialize: (x: Date | string) => (x instanceof Date ? x.toISOString() : x),
-        parse: (x: string) => new Date(x),
-      },
-      bigint: {
-        to: 20,
-        from: [20],
-        parse: (value: string) => Number.parseInt(value),
-        serialize: (value: number) => value.toString(),
-      },
-    },
-    connection: {
-      TimeZone: 'UTC',
-    },
-  };
 
   return {
     host: dto.IMMICH_HOST,
@@ -288,7 +255,7 @@ const getEnv = (): EnvData => {
         prefix: 'immich_bull',
         connection: { ...redisConfig },
         defaultJobOptions: {
-          attempts: 3,
+          attempts: 1,
           removeOnComplete: true,
           removeOnFail: false,
         },
@@ -302,34 +269,20 @@ const getEnv = (): EnvData => {
           mount: true,
           generateId: true,
           setup: (cls, req: Request, res: Response) => {
-            const headerValues = req.headers[ImmichHeader.CID];
+            const headerValues = req.headers[ImmichHeader.Cid];
             const headerValue = Array.isArray(headerValues) ? headerValues[0] : headerValues;
             const cid = headerValue || cls.get(CLS_ID);
             cls.set(CLS_ID, cid);
-            res.header(ImmichHeader.CID, cid);
+            res.header(ImmichHeader.Cid, cid);
           },
         },
       },
     },
 
     database: {
-      config: {
-        typeorm: {
-          type: 'postgres',
-          entities: [`${folders.dist}/entities` + '/*.entity.{js,ts}'],
-          migrations: [`${folders.dist}/migrations` + '/*.{js,ts}'],
-          subscribers: [`${folders.dist}/subscribers` + '/*.{js,ts}'],
-          migrationsRun: false,
-          synchronize: false,
-          connectTimeoutMS: 10_000, // 10 seconds
-          parseInt8: true,
-          ...(databaseUrl ? { connectionType: 'url', url: databaseUrl } : parts),
-        },
-        kysely: driverOptions,
-      },
-
+      config: databaseConnection,
       skipMigrations: dto.DB_SKIP_MIGRATIONS ?? false,
-      vectorExtension: dto.DB_VECTOR_EXTENSION === 'pgvector' ? DatabaseExtension.VECTOR : DatabaseExtension.VECTORS,
+      vectorExtension,
     },
 
     licensePublicKey: isProd ? productionKeys : stagingKeys,
@@ -340,9 +293,9 @@ const getEnv = (): EnvData => {
 
     otel: {
       metrics: {
-        hostMetrics: telemetries.has(ImmichTelemetry.HOST),
+        hostMetrics: telemetries.has(ImmichTelemetry.Host),
         apiMetrics: {
-          enable: telemetries.has(ImmichTelemetry.API),
+          enable: telemetries.has(ImmichTelemetry.Api),
           ignoreRoutes: excludePaths,
         },
       },
@@ -363,10 +316,16 @@ const getEnv = (): EnvData => {
         root: folders.web,
         indexHtml: join(folders.web, 'index.html'),
       },
+      corePlugin: join(buildFolder, 'corePlugin'),
+    },
+
+    setup: {
+      allow: dto.IMMICH_ALLOW_SETUP ?? true,
     },
 
     storage: {
       ignoreMountCheckErrors: !!dto.IMMICH_IGNORE_MOUNT_CHECK_ERRORS,
+      mediaLocation: dto.IMMICH_MEDIA_LOCATION,
     },
 
     telemetry: {
@@ -376,6 +335,13 @@ const getEnv = (): EnvData => {
     },
 
     workers,
+
+    plugins: {
+      external: {
+        allow: dto.IMMICH_ALLOW_EXTERNAL_PLUGINS ?? false,
+        installFolder: dto.IMMICH_PLUGINS_INSTALL_FOLDER,
+      },
+    },
 
     noColor: !!dto.NO_COLOR,
   };
@@ -394,6 +360,10 @@ export class ConfigRepository {
     }
 
     return cached;
+  }
+
+  isDev() {
+    return this.getEnv().environment === ImmichEnvironment.Development;
   }
 
   getWorker() {

@@ -1,10 +1,29 @@
 import { SetMetadata, applyDecorators } from '@nestjs/common';
-import { ApiExtension, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiOperationOptions, ApiProperty, ApiPropertyOptions, ApiTags } from '@nestjs/swagger';
 import _ from 'lodash';
-import { ADDED_IN_PREFIX, DEPRECATED_IN_PREFIX, LIFECYCLE_EXTENSION } from 'src/constants';
-import { ImmichWorker, JobName, MetadataKey, QueueName } from 'src/enum';
+import { ApiCustomExtension, ApiTag, ImmichWorker, JobName, MetadataKey, QueueName } from 'src/enum';
 import { EmitEvent } from 'src/repositories/event.repository';
+import { immich_uuid_v7, updated_at } from 'src/schema/functions';
+import { BeforeUpdateTrigger, Column, ColumnOptions } from 'src/sql-tools';
 import { setUnion } from 'src/utils/set';
+
+const GeneratedUuidV7Column = (options: Omit<ColumnOptions, 'type' | 'default' | 'nullable'> = {}) =>
+  Column({ ...options, type: 'uuid', nullable: false, default: () => `${immich_uuid_v7.name}()` });
+
+export const UpdateIdColumn = (options: Omit<ColumnOptions, 'type' | 'default' | 'nullable'> = {}) =>
+  GeneratedUuidV7Column(options);
+
+export const CreateIdColumn = (options: Omit<ColumnOptions, 'type' | 'default' | 'nullable'> = {}) =>
+  GeneratedUuidV7Column(options);
+
+export const PrimaryGeneratedUuidV7Column = () => GeneratedUuidV7Column({ primary: true });
+
+export const UpdatedAtTrigger = (name: string) =>
+  BeforeUpdateTrigger({
+    name,
+    scope: 'row',
+    function: updated_at,
+  });
 
 // PostgreSQL uses a 16-bit integer to indicate the number of bound parameters. This means that the
 // maximum number of parameters is 65535. Any query that tries to bind more than that (e.g. searching
@@ -67,7 +86,7 @@ export function Chunked(
 
       return Promise.all(
         chunks(argument, chunkSize).map(async (chunk) => {
-          await Reflect.apply(originalMethod, this, [
+          return await Reflect.apply(originalMethod, this, [
             ...arguments_.slice(0, parameterIndex),
             chunk,
             ...arguments_.slice(parameterIndex + 1),
@@ -83,7 +102,7 @@ export function ChunkedArray(options?: { paramIndex?: number }): MethodDecorator
 }
 
 export function ChunkedSet(options?: { paramIndex?: number }): MethodDecorator {
-  return Chunked({ ...options, mergeFn: setUnion });
+  return Chunked({ ...options, mergeFn: (args: Set<any>[]) => setUnion(...args) });
 }
 
 const UUID = '00000000-0000-4000-a000-000000000000';
@@ -99,7 +118,7 @@ export const DummyValue = {
   DATE: new Date(),
   TIME_BUCKET: '2024-01-01T00:00:00.000Z',
   BOOLEAN: true,
-  VECTOR: '[1, 2, 3]',
+  VECTOR: JSON.stringify(Array.from({ length: 512 }, () => 0)),
 };
 
 export const GENERATE_SQL_KEY = 'generate-sql-key';
@@ -107,10 +126,11 @@ export const GENERATE_SQL_KEY = 'generate-sql-key';
 export interface GenerateSqlQueries {
   name?: string;
   params: unknown[];
+  stream?: boolean;
 }
 
 export const Telemetry = (options: { enabled?: boolean }) =>
-  SetMetadata(MetadataKey.TELEMETRY_ENABLED, options?.enabled ?? true);
+  SetMetadata(MetadataKey.TelemetryEnabled, options?.enabled ?? true);
 
 /** Decorator to enable versioning/tracking of generated Sql */
 export const GenerateSql = (...options: GenerateSqlQueries[]) => SetMetadata(GENERATE_SQL_KEY, options);
@@ -124,38 +144,130 @@ export type EventConfig = {
   /** register events for these workers, defaults to all workers */
   workers?: ImmichWorker[];
 };
-export const OnEvent = (config: EventConfig) => SetMetadata(MetadataKey.EVENT_CONFIG, config);
+export const OnEvent = (config: EventConfig) => SetMetadata(MetadataKey.EventConfig, config);
 
 export type JobConfig = {
   name: JobName;
   queue: QueueName;
 };
-export const OnJob = (config: JobConfig) => SetMetadata(MetadataKey.JOB_CONFIG, config);
+export const OnJob = (config: JobConfig) => SetMetadata(MetadataKey.JobConfig, config);
 
-type LifecycleRelease = 'NEXT_RELEASE' | string;
-type LifecycleMetadata = {
-  addedAt?: LifecycleRelease;
-  deprecatedAt?: LifecycleRelease;
-};
+type EndpointOptions = ApiOperationOptions & { history?: HistoryBuilder };
+export const Endpoint = ({ history, ...options }: EndpointOptions) => {
+  const decorators: MethodDecorator[] = [];
+  const extensions = history?.getExtensions() ?? {};
 
-export const EndpointLifecycle = ({ addedAt, deprecatedAt }: LifecycleMetadata) => {
-  const decorators: MethodDecorator[] = [ApiExtension(LIFECYCLE_EXTENSION, { addedAt, deprecatedAt })];
-  if (deprecatedAt) {
-    decorators.push(
-      ApiTags('Deprecated'),
-      ApiOperation({ deprecated: true, description: DEPRECATED_IN_PREFIX + deprecatedAt }),
-    );
+  if (!extensions[ApiCustomExtension.History]) {
+    console.log(`Missing history for endpoint: ${options.summary}`);
   }
+
+  if (history?.isDeprecated()) {
+    options.deprecated = true;
+    decorators.push(ApiTags(ApiTag.Deprecated));
+  }
+
+  decorators.push(ApiOperation({ ...options, ...extensions }));
 
   return applyDecorators(...decorators);
 };
 
-export const PropertyLifecycle = ({ addedAt, deprecatedAt }: LifecycleMetadata) => {
-  const decorators: PropertyDecorator[] = [];
-  decorators.push(ApiProperty({ description: ADDED_IN_PREFIX + addedAt }));
-  if (deprecatedAt) {
-    decorators.push(ApiProperty({ deprecated: true, description: DEPRECATED_IN_PREFIX + deprecatedAt }));
+type PropertyOptions = ApiPropertyOptions & { history?: HistoryBuilder };
+export const Property = ({ history, ...options }: PropertyOptions) => {
+  const extensions = history?.getExtensions() ?? {};
+
+  if (history?.isDeprecated()) {
+    options.deprecated = true;
   }
 
-  return applyDecorators(...decorators);
+  return ApiProperty({ ...options, ...extensions });
 };
+
+type HistoryEntry = {
+  version: string;
+  state: ApiState | 'Added' | 'Updated';
+  description?: string;
+  replacementId?: string;
+};
+
+type DeprecatedOptions = {
+  /** replacement operationId */
+  replacementId?: string;
+};
+
+type CustomExtensions = {
+  [ApiCustomExtension.State]?: ApiState;
+  [ApiCustomExtension.History]?: HistoryEntry[];
+};
+
+enum ApiState {
+  'Stable' = 'Stable',
+  'Alpha' = 'Alpha',
+  'Beta' = 'Beta',
+  'Internal' = 'Internal',
+  'Deprecated' = 'Deprecated',
+}
+export class HistoryBuilder {
+  private hasDeprecated = false;
+  private items: HistoryEntry[] = [];
+
+  added(version: string, description?: string) {
+    return this.push({ version, state: 'Added', description });
+  }
+
+  updated(version: string, description: string) {
+    return this.push({ version, state: 'Updated', description });
+  }
+
+  alpha(version: string) {
+    return this.push({ version, state: ApiState.Alpha });
+  }
+
+  beta(version: string) {
+    return this.push({ version, state: ApiState.Beta });
+  }
+
+  internal(version: string) {
+    return this.push({ version, state: ApiState.Internal });
+  }
+
+  stable(version: string) {
+    return this.push({ version, state: ApiState.Stable });
+  }
+
+  deprecated(version: string, options?: DeprecatedOptions) {
+    const { replacementId } = options || {};
+    this.hasDeprecated = true;
+    return this.push({ version, state: ApiState.Deprecated, replacementId });
+  }
+
+  isDeprecated(): boolean {
+    return this.hasDeprecated;
+  }
+
+  getExtensions() {
+    const extensions: CustomExtensions = {};
+
+    if (this.items.length > 0) {
+      extensions[ApiCustomExtension.History] = this.items;
+    }
+
+    for (const item of this.items.toReversed()) {
+      if (item.state === 'Added' || item.state === 'Updated') {
+        continue;
+      }
+
+      extensions[ApiCustomExtension.State] = item.state;
+      break;
+    }
+
+    return extensions;
+  }
+
+  private push(item: HistoryEntry) {
+    if (!item.version.startsWith('v')) {
+      throw new Error(`Version string must start with 'v': received '${JSON.stringify(item)}'`);
+    }
+    this.items.push(item);
+    return this;
+  }
+}

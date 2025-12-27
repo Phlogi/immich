@@ -2,7 +2,7 @@
 
 -- PartnerRepository.getAll
 select
-  "partners".*,
+  "partner".*,
   (
     select
       to_json(obj)
@@ -12,12 +12,13 @@ select
           "id",
           "name",
           "email",
+          "avatarColor",
           "profileImagePath",
           "profileChangedAt"
         from
-          "users" as "sharedBy"
+          "user" as "sharedBy"
         where
-          "sharedBy"."id" = "partners"."sharedById"
+          "sharedBy"."id" = "partner"."sharedById"
       ) as obj
   ) as "sharedBy",
   (
@@ -29,19 +30,20 @@ select
           "id",
           "name",
           "email",
+          "avatarColor",
           "profileImagePath",
           "profileChangedAt"
         from
-          "users" as "sharedWith"
+          "user" as "sharedWith"
         where
-          "sharedWith"."id" = "partners"."sharedWithId"
+          "sharedWith"."id" = "partner"."sharedWithId"
       ) as obj
   ) as "sharedWith"
 from
-  "partners"
-  inner join "users" as "sharedBy" on "partners"."sharedById" = "sharedBy"."id"
+  "partner"
+  inner join "user" as "sharedBy" on "partner"."sharedById" = "sharedBy"."id"
   and "sharedBy"."deletedAt" is null
-  inner join "users" as "sharedWith" on "partners"."sharedWithId" = "sharedWith"."id"
+  inner join "user" as "sharedWith" on "partner"."sharedWithId" = "sharedWith"."id"
   and "sharedWith"."deletedAt" is null
 where
   (
@@ -51,7 +53,7 @@ where
 
 -- PartnerRepository.get
 select
-  "partners".*,
+  "partner".*,
   (
     select
       to_json(obj)
@@ -61,12 +63,13 @@ select
           "id",
           "name",
           "email",
+          "avatarColor",
           "profileImagePath",
           "profileChangedAt"
         from
-          "users" as "sharedBy"
+          "user" as "sharedBy"
         where
-          "sharedBy"."id" = "partners"."sharedById"
+          "sharedBy"."id" = "partner"."sharedById"
       ) as obj
   ) as "sharedBy",
   (
@@ -78,68 +81,27 @@ select
           "id",
           "name",
           "email",
+          "avatarColor",
           "profileImagePath",
           "profileChangedAt"
         from
-          "users" as "sharedWith"
+          "user" as "sharedWith"
         where
-          "sharedWith"."id" = "partners"."sharedWithId"
+          "sharedWith"."id" = "partner"."sharedWithId"
       ) as obj
   ) as "sharedWith"
 from
-  "partners"
-  inner join "users" as "sharedBy" on "partners"."sharedById" = "sharedBy"."id"
+  "partner"
+  inner join "user" as "sharedBy" on "partner"."sharedById" = "sharedBy"."id"
   and "sharedBy"."deletedAt" is null
-  inner join "users" as "sharedWith" on "partners"."sharedWithId" = "sharedWith"."id"
+  inner join "user" as "sharedWith" on "partner"."sharedWithId" = "sharedWith"."id"
   and "sharedWith"."deletedAt" is null
 where
   "sharedWithId" = $1
   and "sharedById" = $2
 
--- PartnerRepository.create
-insert into
-  "partners" ("sharedWithId", "sharedById")
-values
-  ($1, $2)
-returning
-  *,
-  (
-    select
-      to_json(obj)
-    from
-      (
-        select
-          "id",
-          "name",
-          "email",
-          "profileImagePath",
-          "profileChangedAt"
-        from
-          "users" as "sharedBy"
-        where
-          "sharedBy"."id" = "partners"."sharedById"
-      ) as obj
-  ) as "sharedBy",
-  (
-    select
-      to_json(obj)
-    from
-      (
-        select
-          "id",
-          "name",
-          "email",
-          "profileImagePath",
-          "profileChangedAt"
-        from
-          "users" as "sharedWith"
-        where
-          "sharedWith"."id" = "partners"."sharedWithId"
-      ) as obj
-  ) as "sharedWith"
-
 -- PartnerRepository.update
-update "partners"
+update "partner"
 set
   "inTimeline" = $1
 where
@@ -156,12 +118,13 @@ returning
           "id",
           "name",
           "email",
+          "avatarColor",
           "profileImagePath",
           "profileChangedAt"
         from
-          "users" as "sharedBy"
+          "user" as "sharedBy"
         where
-          "sharedBy"."id" = "partners"."sharedById"
+          "sharedBy"."id" = "partner"."sharedById"
       ) as obj
   ) as "sharedBy",
   (
@@ -173,17 +136,18 @@ returning
           "id",
           "name",
           "email",
+          "avatarColor",
           "profileImagePath",
           "profileChangedAt"
         from
-          "users" as "sharedWith"
+          "user" as "sharedWith"
         where
-          "sharedWith"."id" = "partners"."sharedWithId"
+          "sharedWith"."id" = "partner"."sharedWithId"
       ) as obj
   ) as "sharedWith"
 
 -- PartnerRepository.remove
-delete from "partners"
+delete from "partner"
 where
   "sharedWithId" = $1
   and "sharedById" = $2

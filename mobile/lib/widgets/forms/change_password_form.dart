@@ -17,10 +17,8 @@ class ChangePasswordForm extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final passwordController =
-        useTextEditingController.fromValue(TextEditingValue.empty);
-    final confirmPasswordController =
-        useTextEditingController.fromValue(TextEditingValue.empty);
+    final passwordController = useTextEditingController.fromValue(TextEditingValue.empty);
+    final confirmPasswordController = useTextEditingController.fromValue(TextEditingValue.empty);
     final authState = ref.watch(authProvider);
     final formKey = GlobalKey<FormState>();
 
@@ -34,26 +32,14 @@ class ChangePasswordForm extends HookConsumerWidget {
             alignment: WrapAlignment.start,
             children: [
               Text(
-                'common_change_password'.tr(),
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: context.primaryColor,
-                ),
+                'change_password'.tr(),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: context.primaryColor),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24.0),
                 child: Text(
-                  'change_password_form_description'.tr(
-                    namedArgs: {
-                      'name': authState.name,
-                    },
-                  ),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: context.colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  'change_password_form_description'.tr(namedArgs: {'name': authState.name}),
+                  style: TextStyle(fontSize: 14, color: context.colorScheme.onSurface, fontWeight: FontWeight.w600),
                 ),
               ),
               Form(
@@ -79,13 +65,9 @@ class ChangePasswordForm extends HookConsumerWidget {
                           if (isSuccess) {
                             await ref.read(authProvider.notifier).logout();
 
-                            ref
-                                .read(manualUploadProvider.notifier)
-                                .cancelBackup();
+                            ref.read(manualUploadProvider.notifier).cancelBackup();
                             ref.read(backupProvider.notifier).cancelBackup();
-                            await ref
-                                .read(assetProvider.notifier)
-                                .clearAllAssets();
+                            await ref.read(assetProvider.notifier).clearAllAssets();
                             ref.read(websocketProvider.notifier).disconnect();
 
                             AutoRouter.of(context).back();
@@ -110,7 +92,7 @@ class ChangePasswordForm extends HookConsumerWidget {
                     TextButton.icon(
                       icon: const Icon(Icons.arrow_back),
                       onPressed: () => AutoRouter.of(context).back(),
-                      label: const Text('action_common_back').tr(),
+                      label: const Text('back').tr(),
                     ),
                   ],
                 ),
@@ -146,11 +128,7 @@ class ConfirmPasswordInput extends StatelessWidget {
   final TextEditingController originalController;
   final TextEditingController confirmController;
 
-  const ConfirmPasswordInput({
-    super.key,
-    required this.originalController,
-    required this.confirmController,
-  });
+  const ConfirmPasswordInput({super.key, required this.originalController, required this.confirmController});
 
   String? _validateInput(String? email) {
     if (confirmController.value != originalController.value) {
@@ -178,11 +156,7 @@ class ConfirmPasswordInput extends StatelessWidget {
 class ChangePasswordButton extends ConsumerWidget {
   final TextEditingController passwordController;
   final VoidCallback onPressed;
-  const ChangePasswordButton({
-    super.key,
-    required this.passwordController,
-    required this.onPressed,
-  });
+  const ChangePasswordButton({super.key, required this.passwordController, required this.onPressed});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -192,10 +166,7 @@ class ChangePasswordButton extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 25),
       ),
       onPressed: onPressed,
-      child: Text(
-        'common_change_password'.tr(),
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-      ),
+      child: Text('change_password'.tr(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
     );
   }
 }

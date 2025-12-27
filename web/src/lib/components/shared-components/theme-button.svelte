@@ -1,29 +1,31 @@
 <script lang="ts">
-  import { moonPath, moonViewBox, sunPath, sunViewBox } from '$lib/assets/svg-paths';
-  import CircleIconButton, { type Padding } from '$lib/components/elements/buttons/circle-icon-button.svelte';
-  import { Theme } from '$lib/constants';
-  import { colorTheme, handleToggleTheme } from '$lib/stores/preferences.store';
-  import { t } from 'svelte-i18n';
+  import { shortcut } from '$lib/actions/shortcut';
+  import { defaultLang, langs, Theme } from '$lib/constants';
+  import { themeManager } from '$lib/managers/theme-manager.svelte';
+  import { lang } from '$lib/stores/preferences.store';
+  import { ThemeSwitcher } from '@immich/ui';
+  import { get } from 'svelte/store';
 
-  let icon = $derived($colorTheme.value === Theme.LIGHT ? moonPath : sunPath);
-  let viewBox = $derived($colorTheme.value === Theme.LIGHT ? moonViewBox : sunViewBox);
-  let isDark = $derived($colorTheme.value === Theme.DARK);
+  const handleToggleTheme = () => {
+    if (themeManager.theme.system) {
+      return;
+    }
 
-  interface Props {
-    padding?: Padding;
-  }
-
-  let { padding = '3' }: Props = $props();
+    themeManager.toggleTheme();
+  };
 </script>
 
-{#if !$colorTheme.system}
-  <CircleIconButton
-    title={$t('toggle_theme')}
-    {icon}
-    {viewBox}
-    role="switch"
-    aria-checked={isDark ? 'true' : 'false'}
-    onclick={handleToggleTheme}
-    {padding}
-  />
+<svelte:window use:shortcut={{ shortcut: { key: 't', alt: true }, onShortcut: () => handleToggleTheme() }} />
+
+{#if !themeManager.theme.system}
+  {#await langs
+    .find((item) => item.code === get(lang))
+    ?.loader() ?? defaultLang.loader() then { default: translations }}
+    <ThemeSwitcher
+      size="medium"
+      color="secondary"
+      {translations}
+      onChange={(theme) => themeManager.setTheme(theme == 'dark' ? Theme.DARK : Theme.LIGHT)}
+    />
+  {/await}
 {/if}

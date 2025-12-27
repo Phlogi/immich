@@ -21,33 +21,17 @@ class CameraPicker extends HookConsumerWidget {
     final selectedMake = useState<String?>(filter?.make);
     final selectedModel = useState<String?>(filter?.model);
 
-    final make = ref.watch(
-      getSearchSuggestionsProvider(
-        SearchSuggestionType.cameraMake,
-      ),
-    );
+    final make = ref.watch(getSearchSuggestionsProvider(SearchSuggestionType.cameraMake));
 
-    final models = ref.watch(
-      getSearchSuggestionsProvider(
-        SearchSuggestionType.cameraModel,
-        make: selectedMake.value,
-      ),
-    );
+    final models = ref.watch(getSearchSuggestionsProvider(SearchSuggestionType.cameraModel, make: selectedMake.value));
 
     final makeWidget = SearchDropdown(
       dropdownMenuEntries: switch (make) {
         AsyncError() => [],
-        AsyncData(:final value) => value
-            .map(
-              (e) => DropdownMenuEntry(
-                value: e,
-                label: e,
-              ),
-            )
-            .toList(),
+        AsyncData(:final value) => value.map((e) => DropdownMenuEntry(value: e, label: e)).toList(),
         _ => [],
       },
-      label: const Text('search_filter_camera_make').tr(),
+      label: const Text('make').tr(),
       controller: makeTextController,
       leadingIcon: const Icon(Icons.photo_camera_rounded),
       onSelected: (value) {
@@ -56,46 +40,27 @@ class CameraPicker extends HookConsumerWidget {
         }
         selectedMake.value = value.toString();
         modelTextController.value = TextEditingValue.empty;
-        onSelect({
-          'make': selectedMake.value,
-          'model': null,
-        });
+        onSelect({'make': selectedMake.value, 'model': null});
       },
     );
 
     final modelWidget = SearchDropdown(
       dropdownMenuEntries: switch (models) {
         AsyncError() => [],
-        AsyncData(:final value) => value
-            .map(
-              (e) => DropdownMenuEntry(
-                value: e,
-                label: e,
-              ),
-            )
-            .toList(),
+        AsyncData(:final value) => value.map((e) => DropdownMenuEntry(value: e, label: e)).toList(),
         _ => [],
       },
-      label: const Text('search_filter_camera_model').tr(),
+      label: const Text('model').tr(),
       controller: modelTextController,
       leadingIcon: const Icon(Icons.camera),
       onSelected: (value) {
         selectedModel.value = value.toString();
-        onSelect({
-          'make': selectedMake.value,
-          'model': selectedModel.value,
-        });
+        onSelect({'make': selectedMake.value, 'model': selectedModel.value});
       },
     );
 
     if (context.isMobile) {
-      return Column(
-        children: [
-          makeWidget,
-          const SizedBox(height: 8),
-          modelWidget,
-        ],
-      );
+      return Column(children: [makeWidget, const SizedBox(height: 8), modelWidget]);
     }
 
     return Row(

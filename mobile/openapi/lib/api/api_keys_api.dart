@@ -16,13 +16,18 @@ class APIKeysApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'POST /api-keys' operation and returns the [Response].
+  /// Create an API key
+  ///
+  /// Creates a new API key. It will be limited to the permissions specified.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [APIKeyCreateDto] aPIKeyCreateDto (required):
   Future<Response> createApiKeyWithHttpInfo(APIKeyCreateDto aPIKeyCreateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/api-keys';
+    final apiPath = r'/api-keys';
 
     // ignore: prefer_final_locals
     Object? postBody = aPIKeyCreateDto;
@@ -35,7 +40,7 @@ class APIKeysApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -45,6 +50,10 @@ class APIKeysApi {
     );
   }
 
+  /// Create an API key
+  ///
+  /// Creates a new API key. It will be limited to the permissions specified.
+  ///
   /// Parameters:
   ///
   /// * [APIKeyCreateDto] aPIKeyCreateDto (required):
@@ -63,13 +72,18 @@ class APIKeysApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /api-keys/{id}' operation and returns the [Response].
+  /// Delete an API key
+  ///
+  /// Deletes an API key identified by its ID. The current user must own this API key.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> deleteApiKeyWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/api-keys/{id}'
+    final apiPath = r'/api-keys/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -83,7 +97,7 @@ class APIKeysApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -93,6 +107,10 @@ class APIKeysApi {
     );
   }
 
+  /// Delete an API key
+  ///
+  /// Deletes an API key identified by its ID. The current user must own this API key.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -103,13 +121,18 @@ class APIKeysApi {
     }
   }
 
-  /// Performs an HTTP 'GET /api-keys/{id}' operation and returns the [Response].
+  /// Retrieve an API key
+  ///
+  /// Retrieve an API key by its ID. The current user must own this API key.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> getApiKeyWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/api-keys/{id}'
+    final apiPath = r'/api-keys/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -123,7 +146,7 @@ class APIKeysApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -133,6 +156,10 @@ class APIKeysApi {
     );
   }
 
+  /// Retrieve an API key
+  ///
+  /// Retrieve an API key by its ID. The current user must own this API key.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -151,10 +178,14 @@ class APIKeysApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /api-keys' operation and returns the [Response].
+  /// List all API keys
+  ///
+  /// Retrieve all API keys of the current user.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getApiKeysWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/api-keys';
+    final apiPath = r'/api-keys';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -167,7 +198,7 @@ class APIKeysApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -177,6 +208,9 @@ class APIKeysApi {
     );
   }
 
+  /// List all API keys
+  ///
+  /// Retrieve all API keys of the current user.
   Future<List<APIKeyResponseDto>?> getApiKeys() async {
     final response = await getApiKeysWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -195,7 +229,60 @@ class APIKeysApi {
     return null;
   }
 
-  /// Performs an HTTP 'PUT /api-keys/{id}' operation and returns the [Response].
+  /// Retrieve the current API key
+  ///
+  /// Retrieve the API key that is used to access this endpoint.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getMyApiKeyWithHttpInfo() async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/api-keys/me';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Retrieve the current API key
+  ///
+  /// Retrieve the API key that is used to access this endpoint.
+  Future<APIKeyResponseDto?> getMyApiKey() async {
+    final response = await getMyApiKeyWithHttpInfo();
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'APIKeyResponseDto',) as APIKeyResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update an API key
+  ///
+  /// Updates the name and permissions of an API key by its ID. The current user must own this API key.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -203,7 +290,7 @@ class APIKeysApi {
   /// * [APIKeyUpdateDto] aPIKeyUpdateDto (required):
   Future<Response> updateApiKeyWithHttpInfo(String id, APIKeyUpdateDto aPIKeyUpdateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/api-keys/{id}'
+    final apiPath = r'/api-keys/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -217,7 +304,7 @@ class APIKeysApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -227,6 +314,10 @@ class APIKeysApi {
     );
   }
 
+  /// Update an API key
+  ///
+  /// Updates the name and permissions of an API key by its ID. The current user must own this API key.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):

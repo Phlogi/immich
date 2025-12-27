@@ -1,15 +1,15 @@
 <script lang="ts">
-  import Button from '$lib/components/elements/buttons/button.svelte';
-  import Icon from '$lib/components/elements/icon.svelte';
-  import Portal from '$lib/components/shared-components/portal/portal.svelte';
+  import { shortcuts } from '$lib/actions/shortcut';
   import DuplicateAsset from '$lib/components/utilities-page/duplicates/duplicate-asset.svelte';
+  import Portal from '$lib/elements/Portal.svelte';
+  import { authManager } from '$lib/managers/auth-manager.svelte';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { handlePromiseError } from '$lib/utils';
   import { suggestDuplicate } from '$lib/utils/duplicate-utils';
   import { navigate } from '$lib/utils/navigation';
-  import { shortcuts } from '$lib/actions/shortcut';
-  import { type AssetResponseDto } from '@immich/sdk';
-  import { mdiCheck, mdiTrashCanOutline, mdiImageMultipleOutline } from '@mdi/js';
+  import { getAssetInfo, type AssetResponseDto } from '@immich/sdk';
+  import { Button } from '@immich/ui';
+  import { mdiCheck, mdiImageMultipleOutline, mdiTrashCanOutline } from '@mdi/js';
   import { onDestroy, onMount } from 'svelte';
   import { t } from 'svelte-i18n';
   import { SvelteSet } from 'svelte/reactivity';
@@ -24,6 +24,7 @@
   const { isViewing: showAssetViewer, asset: viewingAsset, setAsset } = assetViewingStore;
   const getAssetIndex = (id: string) => assets.findIndex((asset) => asset.id === id);
 
+  // eslint-disable-next-line svelte/no-unnecessary-state-wrap
   let selectedAssetIds = $state(new SvelteSet<string>());
   let trashCount = $derived(assets.length - selectedAssetIds.size);
 
@@ -42,32 +43,32 @@
     assetViewingStore.showAssetViewer(false);
   });
 
-  const onNext = () => {
+  const onNext = async () => {
     const index = getAssetIndex($viewingAsset.id) + 1;
     if (index >= assets.length) {
-      return Promise.resolve(false);
+      return false;
     }
-    setAsset(assets[index]);
-    return Promise.resolve(true);
+    await onViewAsset(assets[index]);
+    return true;
   };
 
-  const onPrevious = () => {
+  const onPrevious = async () => {
     const index = getAssetIndex($viewingAsset.id) - 1;
     if (index < 0) {
-      return Promise.resolve(false);
+      return false;
     }
-    setAsset(assets[index]);
-    return Promise.resolve(true);
+    await onViewAsset(assets[index]);
+    return true;
   };
 
-  const onRandom = () => {
+  const onRandom = async () => {
     if (assets.length <= 0) {
-      return Promise.resolve(null);
+      return;
     }
     const index = Math.floor(Math.random() * assets.length);
     const asset = assets[index];
-    setAsset(asset);
-    return Promise.resolve(asset);
+    await onViewAsset(asset);
+    return { id: asset.id };
   };
 
   const onSelectAsset = (asset: AssetResponseDto) => {
@@ -86,6 +87,12 @@
     selectedAssetIds = new SvelteSet(assets.map((asset) => asset.id));
   };
 
+  const onViewAsset = async ({ id }: AssetResponseDto) => {
+    const asset = await getAssetInfo({ ...authManager.params, id });
+    setAsset(asset);
+    await navigate({ targetRoute: 'current', assetId: asset.id });
+  };
+
   const handleResolve = () => {
     const trashIds = assets.map((asset) => asset.id).filter((id) => !selectedAssetIds.has(id));
     const duplicateAssetIds = assets.map((asset) => asset.id);
@@ -97,14 +104,12 @@
   };
 </script>
 
-<svelte:window
+<svelte:document
   use:shortcuts={[
     { shortcut: { key: 'a' }, onShortcut: onSelectAll },
     {
       shortcut: { key: 's' },
-      onShortcut: () => {
-        setAsset(assets[0]);
-      },
+      onShortcut: () => onViewAsset(assets[0]),
     },
     { shortcut: { key: 'd' }, onShortcut: onSelectNone },
     { shortcut: { key: 'c', shift: true }, onShortcut: handleResolve },
@@ -112,30 +117,19 @@
   ]}
 />
 
-<div class="pt-4 rounded-3xl border dark:border-2 border-gray-300 dark:border-gray-700 max-w-[54rem] mx-auto mb-16">
-  <div class="flex flex-wrap gap-1 place-items-center place-content-center px-4 pt-4">
-    {#each assets as asset (asset.id)}
-      <DuplicateAsset
-        {asset}
-        {onSelectAsset}
-        isSelected={selectedAssetIds.has(asset.id)}
-        onViewAsset={(asset) => setAsset(asset)}
-      />
-    {/each}
-  </div>
-
-  <div class="flex flex-wrap gap-y-6 mt-10 mb-4 px-6 w-full place-content-end justify-between">
+<div class="rounded-3xl border dark:border-2 border-gray-300 dark:border-gray-700 max-w-256 mx-auto mb-4 py-6 px-0.2">
+  <div class="flex flex-wrap gap-y-6 mb-4 px-6 w-full place-content-end justify-between">
     <!-- MARK ALL BUTTONS -->
     <div class="flex text-xs text-black">
-      <button
-        type="button"
-        class="px-4 py-3 flex place-items-center gap-2 rounded-tl-full rounded-bl-full dark:bg-immich-dark-primary hover:dark:bg-immich-dark-primary/90 bg-immich-primary/25 hover:bg-immich-primary/50"
-        onclick={onSelectAll}><Icon path={mdiCheck} size="20" />{$t('select_keep_all')}</button
+      <Button class="rounded-s-full" size="small" color="primary" leadingIcon={mdiCheck} onclick={onSelectAll}
+        >{$t('select_keep_all')}</Button
       >
-      <button
-        type="button"
-        class="px-4 py-3 flex place-items-center gap-2 rounded-tr-full rounded-br-full dark:bg-immich-dark-primary/50 hover:dark:bg-immich-dark-primary/70 bg-immich-primary hover:bg-immich-primary/80 text-white"
-        onclick={onSelectNone}><Icon path={mdiTrashCanOutline} size="20" />{$t('select_trash_all')}</button
+      <Button
+        class="rounded-e-full"
+        size="small"
+        color="secondary"
+        leadingIcon={mdiTrashCanOutline}
+        onclick={onSelectNone}>{$t('select_trash_all')}</Button
       >
     </div>
 
@@ -143,34 +137,43 @@
     <div class="flex text-xs text-black">
       {#if trashCount === 0}
         <Button
-          size="sm"
-          color="primary"
-          class="flex place-items-center rounded-tl-full rounded-bl-full gap-2"
+          size="small"
+          leadingIcon={mdiCheck}
+          color="success"
+          class="flex place-items-center rounded-s-full gap-2"
           onclick={handleResolve}
         >
-          <Icon path={mdiCheck} size="20" />{$t('keep_all')}
+          {$t('keep_all')}
         </Button>
       {:else}
         <Button
-          size="sm"
-          color="red"
-          class="flex place-items-center rounded-tl-full rounded-bl-full gap-2 py-3"
+          size="small"
+          color="danger"
+          leadingIcon={mdiTrashCanOutline}
+          class="rounded-s-full"
           onclick={handleResolve}
         >
-          <Icon path={mdiTrashCanOutline} size="20" />{trashCount === assets.length
-            ? $t('trash_all')
-            : $t('trash_count', { values: { count: trashCount } })}
+          {trashCount === assets.length ? $t('trash_all') : $t('trash_count', { values: { count: trashCount } })}
         </Button>
       {/if}
       <Button
-        size="sm"
+        size="small"
         color="primary"
-        class="flex place-items-center rounded-tr-full rounded-br-full  gap-2"
+        leadingIcon={mdiImageMultipleOutline}
+        class="rounded-e-full"
         onclick={handleStack}
         disabled={selectedAssetIds.size !== 1}
       >
-        <Icon path={mdiImageMultipleOutline} size="20" />{$t('stack')}
+        {$t('stack')}
       </Button>
+    </div>
+  </div>
+
+  <div class="overflow-x-auto p-2">
+    <div class="flex flex-nowrap gap-1 place-items-center justify-center min-w-full w-fit mx-auto">
+      {#each assets as asset (asset.id)}
+        <DuplicateAsset {assets} {asset} {onSelectAsset} isSelected={selectedAssetIds.has(asset.id)} {onViewAsset} />
+      {/each}
     </div>
   </div>
 </div>

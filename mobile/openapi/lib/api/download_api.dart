@@ -16,15 +16,22 @@ class DownloadApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'POST /download/archive' operation and returns the [Response].
+  /// Download asset archive
+  ///
+  /// Download a ZIP archive containing the specified assets. The assets must have been previously requested via the \"getDownloadInfo\" endpoint.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [AssetIdsDto] assetIdsDto (required):
   ///
   /// * [String] key:
-  Future<Response> downloadArchiveWithHttpInfo(AssetIdsDto assetIdsDto, { String? key, }) async {
+  ///
+  /// * [String] slug:
+  Future<Response> downloadArchiveWithHttpInfo(AssetIdsDto assetIdsDto, { String? key, String? slug, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/download/archive';
+    final apiPath = r'/download/archive';
 
     // ignore: prefer_final_locals
     Object? postBody = assetIdsDto;
@@ -36,12 +43,15 @@ class DownloadApi {
     if (key != null) {
       queryParams.addAll(_queryParams('', 'key', key));
     }
+    if (slug != null) {
+      queryParams.addAll(_queryParams('', 'slug', slug));
+    }
 
     const contentTypes = <String>['application/json'];
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -51,13 +61,19 @@ class DownloadApi {
     );
   }
 
+  /// Download asset archive
+  ///
+  /// Download a ZIP archive containing the specified assets. The assets must have been previously requested via the \"getDownloadInfo\" endpoint.
+  ///
   /// Parameters:
   ///
   /// * [AssetIdsDto] assetIdsDto (required):
   ///
   /// * [String] key:
-  Future<MultipartFile?> downloadArchive(AssetIdsDto assetIdsDto, { String? key, }) async {
-    final response = await downloadArchiveWithHttpInfo(assetIdsDto,  key: key, );
+  ///
+  /// * [String] slug:
+  Future<MultipartFile?> downloadArchive(AssetIdsDto assetIdsDto, { String? key, String? slug, }) async {
+    final response = await downloadArchiveWithHttpInfo(assetIdsDto,  key: key, slug: slug, );
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -71,15 +87,22 @@ class DownloadApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /download/info' operation and returns the [Response].
+  /// Retrieve download information
+  ///
+  /// Retrieve information about how to request a download for the specified assets or album. The response includes groups of assets that can be downloaded together.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [DownloadInfoDto] downloadInfoDto (required):
   ///
   /// * [String] key:
-  Future<Response> getDownloadInfoWithHttpInfo(DownloadInfoDto downloadInfoDto, { String? key, }) async {
+  ///
+  /// * [String] slug:
+  Future<Response> getDownloadInfoWithHttpInfo(DownloadInfoDto downloadInfoDto, { String? key, String? slug, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/download/info';
+    final apiPath = r'/download/info';
 
     // ignore: prefer_final_locals
     Object? postBody = downloadInfoDto;
@@ -91,12 +114,15 @@ class DownloadApi {
     if (key != null) {
       queryParams.addAll(_queryParams('', 'key', key));
     }
+    if (slug != null) {
+      queryParams.addAll(_queryParams('', 'slug', slug));
+    }
 
     const contentTypes = <String>['application/json'];
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -106,13 +132,19 @@ class DownloadApi {
     );
   }
 
+  /// Retrieve download information
+  ///
+  /// Retrieve information about how to request a download for the specified assets or album. The response includes groups of assets that can be downloaded together.
+  ///
   /// Parameters:
   ///
   /// * [DownloadInfoDto] downloadInfoDto (required):
   ///
   /// * [String] key:
-  Future<DownloadResponseDto?> getDownloadInfo(DownloadInfoDto downloadInfoDto, { String? key, }) async {
-    final response = await getDownloadInfoWithHttpInfo(downloadInfoDto,  key: key, );
+  ///
+  /// * [String] slug:
+  Future<DownloadResponseDto?> getDownloadInfo(DownloadInfoDto downloadInfoDto, { String? key, String? slug, }) async {
+    final response = await getDownloadInfoWithHttpInfo(downloadInfoDto,  key: key, slug: slug, );
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

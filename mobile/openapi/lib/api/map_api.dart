@@ -16,7 +16,12 @@ class MapApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'GET /map/markers' operation and returns the [Response].
+  /// Retrieve map markers
+  ///
+  /// Retrieve a list of latitude and longitude coordinates for every asset with location data.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [DateTime] fileCreatedAfter:
@@ -32,7 +37,7 @@ class MapApi {
   /// * [bool] withSharedAlbums:
   Future<Response> getMapMarkersWithHttpInfo({ DateTime? fileCreatedAfter, DateTime? fileCreatedBefore, bool? isArchived, bool? isFavorite, bool? withPartners, bool? withSharedAlbums, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/map/markers';
+    final apiPath = r'/map/markers';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -64,7 +69,7 @@ class MapApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -74,6 +79,10 @@ class MapApi {
     );
   }
 
+  /// Retrieve map markers
+  ///
+  /// Retrieve a list of latitude and longitude coordinates for every asset with location data.
+  ///
   /// Parameters:
   ///
   /// * [DateTime] fileCreatedAfter:
@@ -105,7 +114,12 @@ class MapApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /map/reverse-geocode' operation and returns the [Response].
+  /// Reverse geocode coordinates
+  ///
+  /// Retrieve location information (e.g., city, country) for given latitude and longitude coordinates.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [double] lat (required):
@@ -113,7 +127,7 @@ class MapApi {
   /// * [double] lon (required):
   Future<Response> reverseGeocodeWithHttpInfo(double lat, double lon,) async {
     // ignore: prefer_const_declarations
-    final path = r'/map/reverse-geocode';
+    final apiPath = r'/map/reverse-geocode';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -129,7 +143,7 @@ class MapApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -139,6 +153,10 @@ class MapApi {
     );
   }
 
+  /// Reverse geocode coordinates
+  ///
+  /// Retrieve location information (e.g., city, country) for given latitude and longitude coordinates.
+  ///
   /// Parameters:
   ///
   /// * [double] lat (required):

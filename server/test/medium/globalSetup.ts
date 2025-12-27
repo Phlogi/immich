@@ -1,20 +1,24 @@
+import { Kysely } from 'kysely';
+import { ConfigRepository } from 'src/repositories/config.repository';
+import { DatabaseRepository } from 'src/repositories/database.repository';
+import { LoggingRepository } from 'src/repositories/logging.repository';
+import { DB } from 'src/schema';
+import { getKyselyConfig } from 'src/utils/database';
 import { GenericContainer, Wait } from 'testcontainers';
-import { DataSource } from 'typeorm';
 
 const globalSetup = async () => {
-  const postgres = await new GenericContainer('tensorchord/pgvecto-rs:pg14-v0.2.0')
+  const templateName = 'mich';
+  const postgresContainer = await new GenericContainer('ghcr.io/immich-app/postgres:14-vectorchord0.4.3')
     .withExposedPorts(5432)
     .withEnvironment({
       POSTGRES_PASSWORD: 'postgres',
       POSTGRES_USER: 'postgres',
-      POSTGRES_DB: 'immich',
+      POSTGRES_DB: templateName,
     })
     .withCommand([
       'postgres',
       '-c',
-      'shared_preload_libraries=vectors.so',
-      '-c',
-      'search_path="$$user", public, vectors',
+      'shared_preload_libraries=vchord.so',
       '-c',
       'max_wal_size=2GB',
       '-c',
@@ -25,37 +29,24 @@ const globalSetup = async () => {
       'full_page_writes=off',
       '-c',
       'synchronous_commit=off',
+      '-c',
+      'config_file=/var/lib/postgresql/data/postgresql.conf',
     ])
     .withWaitStrategy(Wait.forAll([Wait.forLogMessage('database system is ready to accept connections', 2)]))
     .start();
 
-  const postgresPort = postgres.getMappedPort(5432);
-  const postgresUrl = `postgres://postgres:postgres@localhost:${postgresPort}/immich`;
+  const postgresPort = postgresContainer.getMappedPort(5432);
+  const postgresUrl = `postgres://postgres:postgres@localhost:${postgresPort}/${templateName}`;
+
   process.env.IMMICH_TEST_POSTGRES_URL = postgresUrl;
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  const modules = import.meta.glob('/src/migrations/*.ts', { eager: true });
+  const db = new Kysely<DB>(getKyselyConfig({ connectionType: 'url', url: postgresUrl }));
 
-  const config = {
-    type: 'postgres' as const,
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
-    migrations: Object.values(modules).map((module) => Object.values(module)[0]),
-    migrationsRun: false,
-    synchronize: false,
-    connectTimeoutMS: 10_000, // 10 seconds
-    parseInt8: true,
-    url: postgresUrl,
-  };
+  const configRepository = new ConfigRepository();
+  const logger = LoggingRepository.create();
+  await new DatabaseRepository(db, logger, configRepository).runMigrations();
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-expect-error
-  const dataSource = new DataSource(config);
-  await dataSource.initialize();
-  await dataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-  await dataSource.runMigrations();
-  await dataSource.destroy();
+  await db.destroy();
 };
 
 export default globalSetup;

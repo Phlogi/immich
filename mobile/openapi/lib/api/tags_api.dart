@@ -16,13 +16,18 @@ class TagsApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'PUT /tags/assets' operation and returns the [Response].
+  /// Tag assets
+  ///
+  /// Add multiple tags to multiple assets in a single request.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [TagBulkAssetsDto] tagBulkAssetsDto (required):
   Future<Response> bulkTagAssetsWithHttpInfo(TagBulkAssetsDto tagBulkAssetsDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags/assets';
+    final apiPath = r'/tags/assets';
 
     // ignore: prefer_final_locals
     Object? postBody = tagBulkAssetsDto;
@@ -35,7 +40,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -45,6 +50,10 @@ class TagsApi {
     );
   }
 
+  /// Tag assets
+  ///
+  /// Add multiple tags to multiple assets in a single request.
+  ///
   /// Parameters:
   ///
   /// * [TagBulkAssetsDto] tagBulkAssetsDto (required):
@@ -63,13 +72,18 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /tags' operation and returns the [Response].
+  /// Create a tag
+  ///
+  /// Create a new tag by providing a name and optional color.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [TagCreateDto] tagCreateDto (required):
   Future<Response> createTagWithHttpInfo(TagCreateDto tagCreateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags';
+    final apiPath = r'/tags';
 
     // ignore: prefer_final_locals
     Object? postBody = tagCreateDto;
@@ -82,7 +96,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -92,6 +106,10 @@ class TagsApi {
     );
   }
 
+  /// Create a tag
+  ///
+  /// Create a new tag by providing a name and optional color.
+  ///
   /// Parameters:
   ///
   /// * [TagCreateDto] tagCreateDto (required):
@@ -110,13 +128,18 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /tags/{id}' operation and returns the [Response].
+  /// Delete a tag
+  ///
+  /// Delete a specific tag by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> deleteTagWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags/{id}'
+    final apiPath = r'/tags/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -130,7 +153,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -140,6 +163,10 @@ class TagsApi {
     );
   }
 
+  /// Delete a tag
+  ///
+  /// Delete a specific tag by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -150,10 +177,14 @@ class TagsApi {
     }
   }
 
-  /// Performs an HTTP 'GET /tags' operation and returns the [Response].
+  /// Retrieve tags
+  ///
+  /// Retrieve a list of all tags.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getAllTagsWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/tags';
+    final apiPath = r'/tags';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -166,7 +197,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -176,6 +207,9 @@ class TagsApi {
     );
   }
 
+  /// Retrieve tags
+  ///
+  /// Retrieve a list of all tags.
   Future<List<TagResponseDto>?> getAllTags() async {
     final response = await getAllTagsWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -194,13 +228,18 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /tags/{id}' operation and returns the [Response].
+  /// Retrieve a tag
+  ///
+  /// Retrieve a specific tag by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> getTagByIdWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags/{id}'
+    final apiPath = r'/tags/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -214,7 +253,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -224,6 +263,10 @@ class TagsApi {
     );
   }
 
+  /// Retrieve a tag
+  ///
+  /// Retrieve a specific tag by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -242,7 +285,12 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'PUT /tags/{id}/assets' operation and returns the [Response].
+  /// Tag assets
+  ///
+  /// Add a tag to all the specified assets.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -250,7 +298,7 @@ class TagsApi {
   /// * [BulkIdsDto] bulkIdsDto (required):
   Future<Response> tagAssetsWithHttpInfo(String id, BulkIdsDto bulkIdsDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags/{id}/assets'
+    final apiPath = r'/tags/{id}/assets'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -264,7 +312,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -274,6 +322,10 @@ class TagsApi {
     );
   }
 
+  /// Tag assets
+  ///
+  /// Add a tag to all the specified assets.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -297,7 +349,12 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /tags/{id}/assets' operation and returns the [Response].
+  /// Untag assets
+  ///
+  /// Remove a tag from all the specified assets.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -305,7 +362,7 @@ class TagsApi {
   /// * [BulkIdsDto] bulkIdsDto (required):
   Future<Response> untagAssetsWithHttpInfo(String id, BulkIdsDto bulkIdsDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags/{id}/assets'
+    final apiPath = r'/tags/{id}/assets'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -319,7 +376,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -329,6 +386,10 @@ class TagsApi {
     );
   }
 
+  /// Untag assets
+  ///
+  /// Remove a tag from all the specified assets.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -352,7 +413,12 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'PUT /tags/{id}' operation and returns the [Response].
+  /// Update a tag
+  ///
+  /// Update an existing tag identified by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -360,7 +426,7 @@ class TagsApi {
   /// * [TagUpdateDto] tagUpdateDto (required):
   Future<Response> updateTagWithHttpInfo(String id, TagUpdateDto tagUpdateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags/{id}'
+    final apiPath = r'/tags/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -374,7 +440,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -384,6 +450,10 @@ class TagsApi {
     );
   }
 
+  /// Update a tag
+  ///
+  /// Update an existing tag identified by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -404,13 +474,18 @@ class TagsApi {
     return null;
   }
 
-  /// Performs an HTTP 'PUT /tags' operation and returns the [Response].
+  /// Upsert tags
+  ///
+  /// Create or update multiple tags in a single request.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [TagUpsertDto] tagUpsertDto (required):
   Future<Response> upsertTagsWithHttpInfo(TagUpsertDto tagUpsertDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/tags';
+    final apiPath = r'/tags';
 
     // ignore: prefer_final_locals
     Object? postBody = tagUpsertDto;
@@ -423,7 +498,7 @@ class TagsApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -433,6 +508,10 @@ class TagsApi {
     );
   }
 
+  /// Upsert tags
+  ///
+  /// Create or update multiple tags in a single request.
+  ///
   /// Parameters:
   ///
   /// * [TagUpsertDto] tagUpsertDto (required):

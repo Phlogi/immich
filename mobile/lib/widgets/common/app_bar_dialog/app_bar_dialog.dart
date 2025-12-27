@@ -1,21 +1,28 @@
+import 'dart:async';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_hooks/flutter_hooks.dart' hide Store;
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:immich_mobile/entities/store.entity.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
 import 'package:immich_mobile/models/backup/backup_state.model.dart';
+import 'package:immich_mobile/providers/asset.provider.dart';
+import 'package:immich_mobile/providers/auth.provider.dart';
 import 'package:immich_mobile/providers/backup/backup.provider.dart';
 import 'package:immich_mobile/providers/backup/manual_upload.provider.dart';
-import 'package:immich_mobile/providers/auth.provider.dart';
-import 'package:immich_mobile/routing/router.dart';
-import 'package:immich_mobile/providers/asset.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/readonly_mode.provider.dart';
+import 'package:immich_mobile/providers/locale_provider.dart';
 import 'package:immich_mobile/providers/user.provider.dart';
 import 'package:immich_mobile/providers/websocket.provider.dart';
+import 'package:immich_mobile/routing/router.dart';
+import 'package:immich_mobile/utils/bytes_units.dart';
 import 'package:immich_mobile/widgets/common/app_bar_dialog/app_bar_profile_info.dart';
 import 'package:immich_mobile/widgets/common/app_bar_dialog/app_bar_server_info.dart';
 import 'package:immich_mobile/widgets/common/confirm_dialog.dart';
-import 'package:immich_mobile/utils/bytes_units.dart';
+import 'package:immich_mobile/widgets/common/immich_logo.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ImmichAppBarDialog extends HookConsumerWidget {
@@ -23,70 +30,53 @@ class ImmichAppBarDialog extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(localeProvider);
     BackUpState backupState = ref.watch(backupProvider);
     final theme = context.themeData;
     bool isHorizontal = !context.isMobile;
     final horizontalPadding = isHorizontal ? 100.0 : 20.0;
     final user = ref.watch(currentUserProvider);
     final isLoggingOut = useState(false);
+    final isReadonlyModeEnabled = ref.watch(readonlyModeProvider);
 
-    useEffect(
-      () {
-        ref.read(backupProvider.notifier).updateDiskInfo();
-        ref.read(currentUserProvider.notifier).refresh();
-        return null;
-      },
-      [],
-    );
+    useEffect(() {
+      ref.read(backupProvider.notifier).updateDiskInfo();
+      ref.read(currentUserProvider.notifier).refresh();
+      return null;
+    }, []);
 
     buildTopRow() {
-      return Stack(
-        children: [
-          Align(
-            alignment: Alignment.topLeft,
-            child: InkWell(
-              onTap: () => context.pop(),
-              child: const Icon(
-                Icons.close,
-                size: 20,
+      return SizedBox(
+        height: 56,
+        child: Stack(
+          alignment: Alignment.centerLeft,
+          children: [
+            IconButton(onPressed: () => context.pop(), icon: const Icon(Icons.close, size: 20)),
+            Align(
+              alignment: Alignment.center,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Image.asset(
+                  context.isDarkTheme ? 'assets/immich-text-dark.png' : 'assets/immich-text-light.png',
+                  height: 16,
+                ),
               ),
             ),
-          ),
-          Center(
-            child: Image.asset(
-              context.isDarkTheme
-                  ? 'assets/immich-text-dark.png'
-                  : 'assets/immich-text-light.png',
-              height: 16,
-            ),
-          ),
-        ],
+          ],
+        ),
       );
     }
 
-    buildActionButton(
-      IconData icon,
-      String text,
-      Function() onTap, {
-      Widget? trailing,
-    }) {
+    buildActionButton(IconData icon, String text, Function() onTap, {Widget? trailing}) {
       return ListTile(
         dense: true,
         visualDensity: VisualDensity.standard,
         contentPadding: const EdgeInsets.only(left: 30, right: 30),
         minLeadingWidth: 40,
-        leading: SizedBox(
-          child: Icon(
-            icon,
-            color: theme.textTheme.labelLarge?.color?.withAlpha(250),
-            size: 20,
-          ),
-        ),
+        leading: SizedBox(child: Icon(icon, color: theme.textTheme.labelLarge?.color?.withAlpha(250), size: 20)),
         title: Text(
           text,
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: theme.textTheme.labelLarge?.color?.withAlpha(250),
-          ),
+          style: theme.textTheme.labelLarge?.copyWith(color: theme.textTheme.labelLarge?.color?.withAlpha(250)),
         ).tr(),
         onTap: onTap,
         trailing: trailing,
@@ -94,11 +84,7 @@ class ImmichAppBarDialog extends HookConsumerWidget {
     }
 
     buildSettingButton() {
-      return buildActionButton(
-        Icons.settings_outlined,
-        "profile_drawer_settings",
-        () => context.pushRoute(const SettingsRoute()),
-      );
+      return buildActionButton(Icons.settings_outlined, "settings", () => context.pushRoute(const SettingsRoute()));
     }
 
     buildAppLogButton() {
@@ -112,41 +98,37 @@ class ImmichAppBarDialog extends HookConsumerWidget {
     buildSignOutButton() {
       return buildActionButton(
         Icons.logout_rounded,
-        "profile_drawer_sign_out",
+        "sign_out",
         () async {
           if (isLoggingOut.value) {
             return;
           }
 
-          showDialog(
-            context: context,
-            builder: (BuildContext ctx) {
-              return ConfirmDialog(
-                title: "app_bar_signout_dialog_title",
-                content: "app_bar_signout_dialog_content",
-                ok: "app_bar_signout_dialog_ok",
-                onOk: () async {
-                  isLoggingOut.value = true;
-                  await ref
-                      .read(authProvider.notifier)
-                      .logout()
-                      .whenComplete(() => isLoggingOut.value = false);
+          unawaited(
+            showDialog(
+              context: context,
+              builder: (BuildContext ctx) {
+                return ConfirmDialog(
+                  title: "app_bar_signout_dialog_title",
+                  content: "app_bar_signout_dialog_content",
+                  ok: "yes",
+                  onOk: () async {
+                    isLoggingOut.value = true;
+                    await ref.read(authProvider.notifier).logout().whenComplete(() => isLoggingOut.value = false);
 
-                  ref.read(manualUploadProvider.notifier).cancelBackup();
-                  ref.read(backupProvider.notifier).cancelBackup();
-                  ref.read(assetProvider.notifier).clearAllAssets();
-                  ref.read(websocketProvider.notifier).disconnect();
-                  context.replaceRoute(const LoginRoute());
-                },
-              );
-            },
+                    ref.read(manualUploadProvider.notifier).cancelBackup();
+                    ref.read(backupProvider.notifier).cancelBackup();
+                    unawaited(ref.read(assetProvider.notifier).clearAllAssets());
+                    ref.read(websocketProvider.notifier).disconnect();
+                    unawaited(context.replaceRoute(const LoginRoute()));
+                  },
+                );
+              },
+            ),
           );
         },
         trailing: isLoggingOut.value
-            ? const SizedBox.square(
-                dimension: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
+            ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
             : null,
       );
     }
@@ -166,20 +148,13 @@ class ImmichAppBarDialog extends HookConsumerWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 3),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: context.colorScheme.surface,
-          ),
+          decoration: BoxDecoration(color: context.colorScheme.surface),
           child: ListTile(
             minLeadingWidth: 50,
-            leading: Icon(
-              Icons.storage_rounded,
-              color: theme.primaryColor,
-            ),
+            leading: Icon(Icons.storage_rounded, color: theme.primaryColor),
             title: Text(
               "backup_controller_page_server_storage",
-              style: context.textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+              style: context.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w500),
             ).tr(),
             isThreeLine: true,
             subtitle: Padding(
@@ -192,19 +167,14 @@ class ImmichAppBarDialog extends HookConsumerWidget {
                     child: LinearProgressIndicator(
                       minHeight: 10.0,
                       value: percentage,
-                      borderRadius:
-                          const BorderRadius.all(Radius.circular(10.0)),
+                      borderRadius: const BorderRadius.all(Radius.circular(10.0)),
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(top: 12.0),
-                    child:
-                        const Text('backup_controller_page_storage_format').tr(
-                      args: [
-                        usedDiskSpace,
-                        totalDiskSpace,
-                      ],
-                    ),
+                    child: const Text(
+                      'backup_controller_page_storage_format',
+                    ).tr(namedArgs: {'used': usedDiskSpace, 'total': totalDiskSpace}),
                   ),
                 ],
               ),
@@ -223,37 +193,54 @@ class ImmichAppBarDialog extends HookConsumerWidget {
             InkWell(
               onTap: () {
                 context.pop();
-                launchUrl(
-                  Uri.parse('https://immich.app'),
-                  mode: LaunchMode.externalApplication,
-                );
+                launchUrl(Uri.parse('https://docs.immich.app'), mode: LaunchMode.externalApplication);
               },
-              child: Text(
-                "profile_drawer_documentation",
-                style: context.textTheme.bodySmall,
-              ).tr(),
+              child: Text("documentation", style: context.textTheme.bodySmall).tr(),
             ),
-            const SizedBox(
-              width: 20,
-              child: Text(
-                "•",
-                textAlign: TextAlign.center,
-              ),
-            ),
+            const SizedBox(width: 20, child: Text("•", textAlign: TextAlign.center)),
             InkWell(
               onTap: () {
                 context.pop();
-                launchUrl(
-                  Uri.parse('https://github.com/immich-app/immich'),
-                  mode: LaunchMode.externalApplication,
+                launchUrl(Uri.parse('https://github.com/immich-app/immich'), mode: LaunchMode.externalApplication);
+              },
+              child: Text("profile_drawer_github", style: context.textTheme.bodySmall).tr(),
+            ),
+            const SizedBox(width: 20, child: Text("•", textAlign: TextAlign.center)),
+            InkWell(
+              onTap: () async {
+                context.pop();
+                final packageInfo = await PackageInfo.fromPlatform();
+                showLicensePage(
+                  context: context,
+                  applicationIcon: const Padding(
+                    padding: EdgeInsetsGeometry.symmetric(vertical: 10),
+                    child: ImmichLogo(size: 40),
+                  ),
+                  applicationVersion: packageInfo.version,
                 );
               },
-              child: Text(
-                "profile_drawer_github",
-                style: context.textTheme.bodySmall,
-              ).tr(),
+              child: Text("licenses", style: context.textTheme.bodySmall).tr(),
             ),
           ],
+        ),
+      );
+    }
+
+    buildReadonlyMessage() {
+      return Padding(
+        padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+        child: ListTile(
+          dense: true,
+          visualDensity: VisualDensity.standard,
+          contentPadding: const EdgeInsets.only(left: 20, right: 20),
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+          minLeadingWidth: 20,
+          tileColor: theme.primaryColor.withAlpha(80),
+          title: Text(
+            "profile_drawer_readonly_mode",
+            style: theme.textTheme.labelLarge?.copyWith(color: theme.textTheme.labelLarge?.color?.withAlpha(250)),
+            textAlign: TextAlign.center,
+          ).tr(),
         ),
       );
     }
@@ -272,21 +259,17 @@ class ImmichAppBarDialog extends HookConsumerWidget {
           right: horizontalPadding,
           bottom: isHorizontal ? 20 : 100,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(20))),
         child: SizedBox(
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  child: buildTopRow(),
-                ),
+                Container(padding: const EdgeInsets.symmetric(horizontal: 8), child: buildTopRow()),
                 const AppBarProfileInfoBox(),
                 buildStorageInformation(),
                 const AppBarServerInfo(),
+                if (Store.isBetaTimelineEnabled && isReadonlyModeEnabled) buildReadonlyMessage(),
                 buildAppLogButton(),
                 buildSettingButton(),
                 buildSignOutButton(),

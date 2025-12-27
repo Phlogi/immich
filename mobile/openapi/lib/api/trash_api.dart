@@ -16,10 +16,14 @@ class TrashApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'POST /trash/empty' operation and returns the [Response].
+  /// Empty trash
+  ///
+  /// Permanently delete all items in the trash.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> emptyTrashWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/trash/empty';
+    final apiPath = r'/trash/empty';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -32,7 +36,7 @@ class TrashApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -42,6 +46,9 @@ class TrashApi {
     );
   }
 
+  /// Empty trash
+  ///
+  /// Permanently delete all items in the trash.
   Future<TrashResponseDto?> emptyTrash() async {
     final response = await emptyTrashWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -57,13 +64,18 @@ class TrashApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /trash/restore/assets' operation and returns the [Response].
+  /// Restore assets
+  ///
+  /// Restore specific assets from the trash.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [BulkIdsDto] bulkIdsDto (required):
   Future<Response> restoreAssetsWithHttpInfo(BulkIdsDto bulkIdsDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/trash/restore/assets';
+    final apiPath = r'/trash/restore/assets';
 
     // ignore: prefer_final_locals
     Object? postBody = bulkIdsDto;
@@ -76,7 +88,7 @@ class TrashApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -86,6 +98,10 @@ class TrashApi {
     );
   }
 
+  /// Restore assets
+  ///
+  /// Restore specific assets from the trash.
+  ///
   /// Parameters:
   ///
   /// * [BulkIdsDto] bulkIdsDto (required):
@@ -104,10 +120,14 @@ class TrashApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /trash/restore' operation and returns the [Response].
+  /// Restore trash
+  ///
+  /// Restore all items in the trash.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> restoreTrashWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/trash/restore';
+    final apiPath = r'/trash/restore';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -120,7 +140,7 @@ class TrashApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -130,6 +150,9 @@ class TrashApi {
     );
   }
 
+  /// Restore trash
+  ///
+  /// Restore all items in the trash.
   Future<TrashResponseDto?> restoreTrash() async {
     final response = await restoreTrashWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {

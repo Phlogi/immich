@@ -1,6 +1,7 @@
 import mockfs from 'mock-fs';
 import { readFileSync } from 'node:fs';
-import { CrawlOptions, crawl } from 'src/utils';
+import { Batcher, CrawlOptions, crawl } from 'src/utils';
+import { Mock } from 'vitest';
 
 interface Test {
   test: string;
@@ -298,8 +299,43 @@ describe('crawl', () => {
           .map(([file]) => file);
 
         // Compare file's content instead of path since a file can be represent in multiple ways.
-        expect(actual.map((path) => readContent(path)).sort()).toEqual(expected.sort());
+        expect(actual.map((path) => readContent(path)).toSorted()).toEqual(expected.toSorted());
       });
     }
+  });
+});
+
+describe('Batcher', () => {
+  let batcher: Batcher;
+  let onBatch: Mock;
+  beforeEach(() => {
+    onBatch = vi.fn();
+    batcher = new Batcher({ batchSize: 2, onBatch });
+  });
+
+  it('should trigger onBatch() when a batch limit is reached', async () => {
+    batcher.add('a');
+    batcher.add('b');
+    batcher.add('c');
+    expect(onBatch).toHaveBeenCalledOnce();
+    expect(onBatch).toHaveBeenCalledWith(['a', 'b']);
+  });
+
+  it('should trigger onBatch() when flush() is called', async () => {
+    batcher.add('a');
+    batcher.flush();
+    expect(onBatch).toHaveBeenCalledOnce();
+    expect(onBatch).toHaveBeenCalledWith(['a']);
+  });
+
+  it('should trigger onBatch() when debounce time reached', async () => {
+    vi.useFakeTimers();
+    batcher = new Batcher({ batchSize: 2, debounceTimeMs: 100, onBatch });
+    batcher.add('a');
+    expect(onBatch).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(200);
+    expect(onBatch).toHaveBeenCalledOnce();
+    expect(onBatch).toHaveBeenCalledWith(['a']);
+    vi.useRealTimers();
   });
 });

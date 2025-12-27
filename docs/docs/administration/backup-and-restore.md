@@ -3,7 +3,7 @@
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-A [3-2-1 backup strategy](https://www.backblaze.com/blog/the-3-2-1-backup-strategy/) is recommended to protect your data. You should keep copies of your uploaded photos/videos as well as the Immich database for a comprehensive backup solution. This page provides an overview on how to backup the database and the location of user-uploaded pictures and videos. A template bash script that can be run as a cron job is provided [here](/docs/guides/template-backup-script.md)
+A [3-2-1 backup strategy](https://www.backblaze.com/blog/the-3-2-1-backup-strategy/) is recommended to protect your data. You should keep copies of your uploaded photos/videos as well as the Immich database for a comprehensive backup solution. This page provides an overview on how to backup the database and the location of user-uploaded pictures and videos. A template bash script that can be run as a cron job is provided [here](/guides/template-backup-script.md)
 
 :::danger
 The instructions on this page show you how to prepare your Immich instance to be backed up, and which files to take a backup of. You still need to take care of using an actual backup tool to make a backup yourself.
@@ -23,16 +23,32 @@ Refer to the official [postgres documentation](https://www.postgresql.org/docs/c
 It is not recommended to directly backup the `DB_DATA_LOCATION` folder. Doing so while the database is running can lead to a corrupted backup that cannot be restored.
 :::
 
-### Automatic Database Backups
+### Automatic Database Dumps
 
-For convenience, Immich will automatically create database backups by default. The backups are stored in `UPLOAD_LOCATION/backups`.  
-As mentioned above, you should make your own backup of these together with the asset folders as noted below.  
-You can adjust the schedule and amount of kept backups in the [admin settings](http://my.immich.app/admin/system-settings?isOpen=backup).  
-By default, Immich will keep the last 14 backups and create a new backup every day at 2:00 AM.
+:::warning
+The automatic database dumps can be used to restore the database in the event of damage to the Postgres database files.
+There is no monitoring for these dumps and you will not be notified if they are unsuccessful.
+:::
+
+:::caution
+The database dumps do **NOT** contain any pictures or videos, only metadata. They are only usable with a copy of the other files in `UPLOAD_LOCATION` as outlined below.
+:::
+
+For disaster-recovery purposes, Immich will automatically create database dumps. The dumps are stored in `UPLOAD_LOCATION/backups`.
+Please be sure to make your own, independent backup of the database together with the asset folders as noted below.
+You can adjust the schedule and amount of kept database dumps in the [admin settings](http://my.immich.app/admin/system-settings?isOpen=backup).
+By default, Immich will keep the last 14 database dumps and create a new dump every day at 2:00 AM.
+
+#### Trigger Dump
+
+You are able to trigger a database dump in the [admin job status page](http://my.immich.app/admin/queues).
+Visit the page, open the "Create job" modal from the top right, select "Create Database Dump" and click "Confirm".
+A job will run and trigger a dump, you can verify this worked correctly by checking the logs or the `backups/` folder.
+This dumps will count towards the last `X` dumps that will be kept based on your settings.
 
 #### Restoring
 
-We hope to make restoring simpler in future versions, for now you can find the backups in the `UPLOAD_LOCATION/backups` folder on your host.  
+We hope to make restoring simpler in future versions, for now you can find the database dumps in the `UPLOAD_LOCATION/backups` folder on your host.
 Then please follow the steps in the following section for restoring the database.
 
 ### Manual Backup and Restore
@@ -41,7 +57,8 @@ Then please follow the steps in the following section for restoring the database
   <TabItem value="Linux system" label="Linux system" default>
 
 ```bash title='Backup'
-docker exec -t immich_postgres pg_dumpall --clean --if-exists --username=postgres | gzip > "/path/to/backup/dump.sql.gz"
+# Replace <DB_USERNAME> with the database username - usually postgres unless you have changed it.
+docker exec -t immich_postgres pg_dumpall --clean --if-exists --username=<DB_USERNAME> | gzip > "/path/to/backup/dump.sql.gz"
 ```
 
 ```bash title='Restore'
@@ -53,17 +70,19 @@ docker compose create           # Create Docker containers for Immich apps witho
 docker start immich_postgres    # Start Postgres server
 sleep 10                        # Wait for Postgres server to start up
 # Check the database user if you deviated from the default
-gunzip < "/path/to/backup/dump.sql.gz" \
+# Replace <DB_USERNAME> with the database username - usually postgres unless you have changed it.
+gunzip --stdout "/path/to/backup/dump.sql.gz" \
 | sed "s/SELECT pg_catalog.set_config('search_path', '', false);/SELECT pg_catalog.set_config('search_path', 'public, pg_catalog', true);/g" \
 | docker exec -i immich_postgres psql --dbname=postgres --username=<DB_USERNAME>  # Restore Backup
 docker compose up -d            # Start remainder of Immich apps
 ```
 
-</TabItem>
+  </TabItem>
   <TabItem value="Windows system (PowerShell)" label="Windows system (PowerShell)">
 
 ```powershell title='Backup'
-[System.IO.File]::WriteAllLines("C:\absolute\path\to\backup\dump.sql", (docker exec -t immich_postgres pg_dumpall --clean --if-exists --username=postgres))
+# Replace <DB_USERNAME> with the database username - usually postgres unless you have changed it.
+[System.IO.File]::WriteAllLines("C:\absolute\path\to\backup\dump.sql", (docker exec -t immich_postgres pg_dumpall --clean --if-exists --username=<DB_USERNAME>))
 ```
 
 ```powershell title='Restore'
@@ -76,13 +95,15 @@ docker compose create                             # Create Docker containers for
 docker start immich_postgres                      # Start Postgres server
 sleep 10                                          # Wait for Postgres server to start up
 docker exec -it immich_postgres bash              # Enter the Docker shell and run the following command
-# Check the database user if you deviated from the default. If your backup ends in `.gz`, replace `cat` with `gunzip`
-cat < "/dump.sql" | sed "s/SELECT pg_catalog.set_config('search_path', '', false);/SELECT pg_catalog.set_config('search_path', 'public, pg_catalog', true);/g" | psql --dbname=postgres --username=<DB_USERNAME>
+# If your backup ends in `.gz`, replace `cat` with `gunzip --stdout`
+# Replace <DB_USERNAME> with the database username - usually postgres unless you have changed it.
+
+cat "/dump.sql" | sed "s/SELECT pg_catalog.set_config('search_path', '', false);/SELECT pg_catalog.set_config('search_path', 'public, pg_catalog', true);/g" | psql --dbname=postgres --username=<DB_USERNAME>
 exit                                              # Exit the Docker shell
 docker compose up -d                              # Start remainder of Immich apps
 ```
 
-</TabItem>
+  </TabItem>
 </Tabs>
 
 Note that for the database restore to proceed properly, it requires a completely fresh install (i.e. the Immich server has never run since creating the Docker containers). If the Immich app has run, Postgres conflicts may be encountered upon database restoration (relation already exists, violated foreign key constraints, multiple primary keys, etc.), in which case you need to delete the `DB_DATA_LOCATION` folder to reset the database.
@@ -134,19 +155,17 @@ for more info read the [release notes](https://github.com/immich-app/immich/rele
   - Preview images (small thumbnails and large previews) for each asset and thumbnails for recognized faces.
   - Stored in `UPLOAD_LOCATION/thumbs/<userID>`.
 - **Encoded Assets:**
-
   - Videos that have been re-encoded from the original for wider compatibility. The original is not removed.
   - Stored in `UPLOAD_LOCATION/encoded-video/<userID>`.
 
 - **Postgres**
-
   - The Immich database containing all the information to allow the system to function properly.  
     **Note:** This folder will only appear to users who have made the changes mentioned in [v1.102.0](https://github.com/immich-app/immich/discussions/8930) (an optional, non-mandatory change) or who started with this version.
   - Stored in `DB_DATA_LOCATION`.
 
   :::danger
   A backup of this folder does not constitute a backup of your database!
-  Follow the instructions listed [here](/docs/administration/backup-and-restore#database) to learn how to perform a proper backup.
+  Follow the instructions listed [here](/administration/backup-and-restore#database) to learn how to perform a proper backup.
   :::
 
 </TabItem>
@@ -185,14 +204,13 @@ When you turn off the storage template engine, it will leave the assets in `UPLO
   - Temporarily located in `UPLOAD_LOCATION/upload/<userID>`.
   - Transferred to `UPLOAD_LOCATION/library/<userID>` upon successful upload.
 - **Postgres**
-
   - The Immich database containing all the information to allow the system to function properly.  
     **Note:** This folder will only appear to users who have made the changes mentioned in [v1.102.0](https://github.com/immich-app/immich/discussions/8930) (an optional, non-mandatory change) or who started with this version.
   - Stored in `DB_DATA_LOCATION`.
 
   :::danger
   A backup of this folder does not constitute a backup of your database!
-  Follow the instructions listed [here](/docs/administration/backup-and-restore#database) to learn how to perform a proper backup.
+  Follow the instructions listed [here](/administration/backup-and-restore#database) to learn how to perform a proper backup.
   :::
 
 </TabItem>
@@ -203,3 +221,10 @@ When you turn off the storage template engine, it will leave the assets in `UPLO
 Do not touch the files inside these folders under any circumstances except taking a backup. Changing or removing an asset can cause untracked and missing files.
 You can think of it as App-Which-Must-Not-Be-Named, the only access to viewing, changing and deleting assets is only through the mobile or browser interface.
 :::
+
+## Backup ordering
+
+A backup of Immich should contain both the database and the asset files. When backing these up it's possible for them to get out of sync, potentially resulting in broken assets after you restore.  
+The best way of dealing with this is to stop the immich-server container while you take a backup. If nothing is changing then the backup will always be in sync.
+
+If stopping the container is not an option, then the recommended order is to back up the database first, and the filesystem second. This way, the worst case scenario is that there are files on the filesystem that the database doesn't know about. If necessary, these can be (re)uploaded manually after a restore. If the backup is done the other way around, with the filesystem first and the database second, it's possible for the restored database to reference files that aren't in the filesystem backup, thus resulting in broken assets.

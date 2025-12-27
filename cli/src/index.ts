@@ -8,6 +8,7 @@ import { serverInfo } from 'src/commands/server-info';
 import { version } from '../package.json';
 
 const defaultConfigDirectory = path.join(os.homedir(), '.config/immich/');
+const defaultConcurrency = Math.max(1, os.cpus().length - 1);
 
 const program = new Command()
   .name('immich')
@@ -66,9 +67,26 @@ program
   .addOption(
     new Option('-c, --concurrency <number>', 'Number of assets to upload at the same time')
       .env('IMMICH_UPLOAD_CONCURRENCY')
-      .default(4),
+      .default(defaultConcurrency),
+  )
+  .addOption(
+    new Option('-j, --json-output', 'Output detailed information in json format')
+      .env('IMMICH_JSON_OUTPUT')
+      .default(false),
   )
   .addOption(new Option('--delete', 'Delete local assets after upload').env('IMMICH_DELETE_ASSETS'))
+  .addOption(
+    new Option('--delete-duplicates', 'Delete local assets that are duplicates (already exist on server)').env(
+      'IMMICH_DELETE_DUPLICATES',
+    ),
+  )
+  .addOption(new Option('--no-progress', 'Hide progress bars').env('IMMICH_PROGRESS_BAR').default(true))
+  .addOption(
+    new Option('--watch', 'Watch for changes and upload automatically')
+      .env('IMMICH_WATCH_CHANGES')
+      .default(false)
+      .implies({ progress: false }),
+  )
   .argument('[paths...]', 'One or more paths to assets to be uploaded')
   .action((paths, options) => upload(paths, program.opts(), options));
 

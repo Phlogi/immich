@@ -1,9 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsString, ValidateIf } from 'class-validator';
+import { IsNotEmpty, IsString, ValidateIf } from 'class-validator';
+import { Activity } from 'src/database';
 import { mapUser, UserResponseDto } from 'src/dtos/user.dto';
-import { UserEntity } from 'src/entities/user.entity';
-import { ActivityItem } from 'src/types';
-import { Optional, ValidateUUID } from 'src/validation';
+import { ValidateEnum, ValidateUUID } from 'src/validation';
 
 export enum ReactionType {
   COMMENT = 'comment',
@@ -20,7 +19,7 @@ export type MaybeDuplicate<T> = { duplicate: boolean; value: T };
 export class ActivityResponseDto {
   id!: string;
   createdAt!: Date;
-  @ApiProperty({ enumName: 'ReactionType', enum: ReactionType })
+  @ValidateEnum({ enum: ReactionType, name: 'ReactionType' })
   type!: ReactionType;
   user!: UserResponseDto;
   assetId!: string | null;
@@ -30,6 +29,9 @@ export class ActivityResponseDto {
 export class ActivityStatisticsResponseDto {
   @ApiProperty({ type: 'integer' })
   comments!: number;
+
+  @ApiProperty({ type: 'integer' })
+  likes!: number;
 }
 
 export class ActivityDto {
@@ -41,14 +43,10 @@ export class ActivityDto {
 }
 
 export class ActivitySearchDto extends ActivityDto {
-  @IsEnum(ReactionType)
-  @Optional()
-  @ApiProperty({ enumName: 'ReactionType', enum: ReactionType })
+  @ValidateEnum({ enum: ReactionType, name: 'ReactionType', optional: true })
   type?: ReactionType;
 
-  @IsEnum(ReactionLevel)
-  @Optional()
-  @ApiProperty({ enumName: 'ReactionLevel', enum: ReactionLevel })
+  @ValidateEnum({ enum: ReactionLevel, name: 'ReactionLevel', optional: true })
   level?: ReactionLevel;
 
   @ValidateUUID({ optional: true })
@@ -58,8 +56,7 @@ export class ActivitySearchDto extends ActivityDto {
 const isComment = (dto: ActivityCreateDto) => dto.type === ReactionType.COMMENT;
 
 export class ActivityCreateDto extends ActivityDto {
-  @IsEnum(ReactionType)
-  @ApiProperty({ enumName: 'ReactionType', enum: ReactionType })
+  @ValidateEnum({ enum: ReactionType, name: 'ReactionType' })
   type!: ReactionType;
 
   @ValidateIf(isComment)
@@ -68,13 +65,13 @@ export class ActivityCreateDto extends ActivityDto {
   comment?: string;
 }
 
-export const mapActivity = (activity: ActivityItem): ActivityResponseDto => {
+export const mapActivity = (activity: Activity): ActivityResponseDto => {
   return {
     id: activity.id,
     assetId: activity.assetId,
     createdAt: activity.createdAt,
     comment: activity.comment,
     type: activity.isLiked ? ReactionType.LIKE : ReactionType.COMMENT,
-    user: mapUser(activity.user as unknown as UserEntity),
+    user: mapUser(activity.user),
   };
 };

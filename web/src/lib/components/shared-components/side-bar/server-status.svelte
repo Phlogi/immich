@@ -1,22 +1,25 @@
 <script lang="ts">
-  import ServerAboutModal from '$lib/components/shared-components/server-about-modal.svelte';
+  import { releaseManager } from '$lib/managers/release-manager.svelte';
+  import ServerAboutModal from '$lib/modals/ServerAboutModal.svelte';
+  import { user } from '$lib/stores/user.store';
+  import { userInteraction } from '$lib/stores/user.svelte';
   import { websocketStore } from '$lib/stores/websocket';
+  import type { ReleaseEvent } from '$lib/types';
+  import { semverToName } from '$lib/utils';
   import { requestServerInfo } from '$lib/utils/auth';
-  import { onMount } from 'svelte';
-  import { t } from 'svelte-i18n';
   import {
     getAboutInfo,
     getVersionHistory,
     type ServerAboutResponseDto,
     type ServerVersionHistoryResponseDto,
   } from '@immich/sdk';
-  import Icon from '$lib/components/elements/icon.svelte';
-  import { mdiAlert } from '@mdi/js';
-  import { userInteraction } from '$lib/stores/user.svelte';
+  import { Icon, modalManager, Text } from '@immich/ui';
+  import { mdiAlert, mdiNewBox } from '@mdi/js';
+  import { onMount } from 'svelte';
+  import { t } from 'svelte-i18n';
 
   const { serverVersion, connected } = websocketStore;
 
-  let isOpen = $state(false);
   let info: ServerAboutResponseDto | undefined = $state();
   let versions: ServerVersionHistoryResponseDto[] = $state([]);
 
@@ -35,14 +38,27 @@
   let version = $derived(
     $serverVersion ? `v${$serverVersion.major}.${$serverVersion.minor}.${$serverVersion.patch}` : null,
   );
+
+  const getReleaseInfo = (release?: ReleaseEvent) => {
+    if (!release || !release?.isAvailable || !$user.isAdmin) {
+      return;
+    }
+
+    const availableVersion = semverToName(release.releaseVersion);
+    const serverVersion = semverToName(release.serverVersion);
+
+    if (serverVersion === availableVersion) {
+      return;
+    }
+
+    return { availableVersion, releaseUrl: `https://github.com/immich-app/immich/releases/tag/${availableVersion}` };
+  };
+
+  const releaseInfo = $derived(getReleaseInfo(releaseManager.value));
 </script>
 
-{#if isOpen && info}
-  <ServerAboutModal onClose={() => (isOpen = false)} {info} {versions} />
-{/if}
-
 <div
-  class="text-sm hidden group-hover:sm:flex md:flex pl-5 pr-1 place-items-center place-content-center justify-between"
+  class="text-sm flex md:flex ps-5 pe-1 place-items-center place-content-center justify-between min-w-52 overflow-hidden dark:text-immich-dark-fg"
 >
   {#if $connected}
     <div class="flex gap-2 place-items-center place-content-center">
@@ -58,9 +74,13 @@
 
   <div class="flex justify-between justify-items-center">
     {#if $connected && version}
-      <button type="button" onclick={() => (isOpen = true)} class="dark:text-immich-gray flex gap-1">
+      <button
+        type="button"
+        onclick={() => info && modalManager.show(ServerAboutModal, { versions, info })}
+        class="dark:text-immich-gray flex gap-1 place-items-center place-content-center"
+      >
         {#if isMain}
-          <Icon path={mdiAlert} size="1.5em" color="#ffcc4d" /> {info?.sourceRef}
+          <Icon icon={mdiAlert} size="1.5em" color="#ffcc4d" /> {info?.sourceRef}
         {:else}
           {version}
         {/if}
@@ -70,3 +90,26 @@
     {/if}
   </div>
 </div>
+
+{#if releaseInfo}
+  <a
+    href={releaseInfo.releaseUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    class="mt-3 p-2.5 ms-4 rounded-lg text-sm min-w-52 border border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 hover:border-immich-primary/40 dark:hover:border-immich-dark-primary/40 hover:bg-immich-primary/5 dark:hover:bg-immich-dark-primary/5 transition-all duration-200 group block"
+  >
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <Icon icon={mdiNewBox} size="16" class="text-immich-primary dark:text-immich-dark-primary opacity-80" />
+        <Text size="tiny" class="font-medium text-gray-700 dark:text-gray-300">
+          {releaseInfo.availableVersion}
+        </Text>
+      </div>
+      <span
+        class="text-[11px] text-gray-500 dark:text-gray-400 group-hover:text-immich-primary dark:group-hover:text-immich-dark-primary transition-colors opacity-70 group-hover:opacity-100"
+      >
+        {$t('new_update')}!
+      </span>
+    </div>
+  </a>
+{/if}

@@ -4,6 +4,7 @@ import { serverVersion } from 'src/constants';
 import { ImmichEnvironment, JobName, JobStatus, SystemMetadataKey } from 'src/enum';
 import { VersionService } from 'src/services/version.service';
 import { mockEnvData } from 'test/repositories/config.repository.mock';
+import { factory } from 'test/small.factory';
 import { newTestService, ServiceMocks } from 'test/utils';
 
 const mockRelease = (version: string) => ({
@@ -30,7 +31,12 @@ describe(VersionService.name, () => {
 
   describe('onBootstrap', () => {
     it('should record a new version', async () => {
+      mocks.versionHistory.getAll.mockResolvedValue([]);
+      mocks.versionHistory.getLatest.mockResolvedValue(void 0);
+      mocks.versionHistory.create.mockResolvedValue(factory.versionHistory());
+
       await expect(sut.onBootstrap()).resolves.toBeUndefined();
+
       expect(mocks.versionHistory.create).toHaveBeenCalledWith({ version: expect.any(String) });
     });
 
@@ -66,18 +72,18 @@ describe(VersionService.name, () => {
   describe('handQueueVersionCheck', () => {
     it('should queue a version check job', async () => {
       await expect(sut.handleQueueVersionCheck()).resolves.toBeUndefined();
-      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.VERSION_CHECK, data: {} });
+      expect(mocks.job.queue).toHaveBeenCalledWith({ name: JobName.VersionCheck, data: {} });
     });
   });
 
   describe('handVersionCheck', () => {
     beforeEach(() => {
-      mocks.config.getEnv.mockReturnValue(mockEnvData({ environment: ImmichEnvironment.PRODUCTION }));
+      mocks.config.getEnv.mockReturnValue(mockEnvData({ environment: ImmichEnvironment.Production }));
     });
 
     it('should not run in dev mode', async () => {
-      mocks.config.getEnv.mockReturnValue(mockEnvData({ environment: ImmichEnvironment.DEVELOPMENT }));
-      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.SKIPPED);
+      mocks.config.getEnv.mockReturnValue(mockEnvData({ environment: ImmichEnvironment.Development }));
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Skipped);
     });
 
     it('should not run if the last check was < 60 minutes ago', async () => {
@@ -85,12 +91,12 @@ describe(VersionService.name, () => {
         checkedAt: DateTime.utc().minus({ minutes: 5 }).toISO(),
         releaseVersion: '1.0.0',
       });
-      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.SKIPPED);
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Skipped);
     });
 
     it('should not run if version check is disabled', async () => {
       mocks.systemMetadata.get.mockResolvedValue({ newVersionCheck: { enabled: false } });
-      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.SKIPPED);
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Skipped);
     });
 
     it('should run if it has been > 60 minutes', async () => {
@@ -99,27 +105,27 @@ describe(VersionService.name, () => {
         checkedAt: DateTime.utc().minus({ minutes: 65 }).toISO(),
         releaseVersion: '1.0.0',
       });
-      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.SUCCESS);
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Success);
       expect(mocks.systemMetadata.set).toHaveBeenCalled();
       expect(mocks.logger.log).toHaveBeenCalled();
-      expect(mocks.event.clientBroadcast).toHaveBeenCalled();
+      expect(mocks.websocket.clientBroadcast).toHaveBeenCalled();
     });
 
     it('should not notify if the version is equal', async () => {
       mocks.serverInfo.getGitHubRelease.mockResolvedValue(mockRelease(serverVersion.toString()));
-      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.SUCCESS);
-      expect(mocks.systemMetadata.set).toHaveBeenCalledWith(SystemMetadataKey.VERSION_CHECK_STATE, {
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Success);
+      expect(mocks.systemMetadata.set).toHaveBeenCalledWith(SystemMetadataKey.VersionCheckState, {
         checkedAt: expect.any(String),
         releaseVersion: serverVersion.toString(),
       });
-      expect(mocks.event.clientBroadcast).not.toHaveBeenCalled();
+      expect(mocks.websocket.clientBroadcast).not.toHaveBeenCalled();
     });
 
     it('should handle a github error', async () => {
       mocks.serverInfo.getGitHubRelease.mockRejectedValue(new Error('GitHub is down'));
-      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.FAILED);
+      await expect(sut.handleVersionCheck()).resolves.toEqual(JobStatus.Failed);
       expect(mocks.systemMetadata.set).not.toHaveBeenCalled();
-      expect(mocks.event.clientBroadcast).not.toHaveBeenCalled();
+      expect(mocks.websocket.clientBroadcast).not.toHaveBeenCalled();
       expect(mocks.logger.warn).toHaveBeenCalled();
     });
   });
@@ -127,15 +133,15 @@ describe(VersionService.name, () => {
   describe('onWebsocketConnectionEvent', () => {
     it('should send on_server_version client event', async () => {
       await sut.onWebsocketConnection({ userId: '42' });
-      expect(mocks.event.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
-      expect(mocks.event.clientSend).toHaveBeenCalledTimes(1);
+      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
+      expect(mocks.websocket.clientSend).toHaveBeenCalledTimes(1);
     });
 
     it('should also send a new release notification', async () => {
       mocks.systemMetadata.get.mockResolvedValue({ checkedAt: '2024-01-01', releaseVersion: 'v1.42.0' });
       await sut.onWebsocketConnection({ userId: '42' });
-      expect(mocks.event.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
-      expect(mocks.event.clientSend).toHaveBeenCalledWith('on_new_release', '42', expect.any(Object));
+      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_server_version', '42', expect.any(SemVer));
+      expect(mocks.websocket.clientSend).toHaveBeenCalledWith('on_new_release', '42', expect.any(Object));
     });
   });
 });

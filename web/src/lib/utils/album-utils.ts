@@ -1,5 +1,4 @@
 import { goto } from '$app/navigation';
-import { dialogController } from '$lib/components/shared-components/dialog/dialog';
 import { AppRoute } from '$lib/constants';
 import {
   AlbumFilter,
@@ -59,7 +58,7 @@ export const sortOptionsMetadata: AlbumSortOptionMetadata[] = [
   {
     id: AlbumSortBy.Title,
     defaultOrder: SortOrder.Asc,
-    columnStyle: 'text-left w-8/12 sm:w-4/12 md:w-4/12 md:w-4/12 xl:w-[30%] 2xl:w-[40%]',
+    columnStyle: 'text-start w-8/12 sm:w-4/12 md:w-4/12 xl:w-[30%] 2xl:w-[40%]',
   },
   {
     id: AlbumSortBy.ItemCount,
@@ -201,19 +200,6 @@ export const collapseAllAlbumGroups = (groupIds: string[]) => {
 
 export const expandAllAlbumGroups = () => {
   collapseAllAlbumGroups([]);
-};
-
-export const confirmAlbumDelete = async (album: AlbumResponseDto) => {
-  const $t = get(t);
-  const confirmation =
-    album.albumName.length > 0
-      ? $t('album_delete_confirmation', { values: { album: album.albumName } })
-      : $t('unnamed_album_delete_confirmation');
-
-  const description = $t('album_delete_confirmation_description');
-  const prompt = `${confirmation} ${description}`;
-
-  return dialogController.show({ prompt });
 };
 
 interface AlbumSortOption {

@@ -9,7 +9,7 @@ import 'package:immich_mobile/domain/services/store.service.dart';
 import 'package:immich_mobile/entities/album.entity.dart';
 import 'package:immich_mobile/entities/asset.entity.dart';
 import 'package:immich_mobile/entities/store.entity.dart';
-import 'package:immich_mobile/entities/user.entity.dart';
+import 'package:immich_mobile/infrastructure/entities/user.entity.dart';
 import 'package:immich_mobile/infrastructure/repositories/store.repository.dart';
 import 'package:immich_mobile/models/activities/activity.model.dart';
 import 'package:immich_mobile/pages/common/activities.page.dart';
@@ -49,19 +49,8 @@ final _activities = [
     comment: 'Second Activity',
     user: UserStub.user1,
   ),
-  Activity(
-    id: '3',
-    createdAt: DateTime(300),
-    type: ActivityType.like,
-    assetId: 'asset-1',
-    user: UserStub.user2,
-  ),
-  Activity(
-    id: '4',
-    createdAt: DateTime(400),
-    type: ActivityType.like,
-    user: UserStub.user1,
-  ),
+  Activity(id: '3', createdAt: DateTime(300), type: ActivityType.like, assetId: 'asset-1', user: UserStub.user2),
+  Activity(id: '4', createdAt: DateTime(400), type: ActivityType.like, user: UserStub.user1),
 ];
 
 void main() {
@@ -75,9 +64,9 @@ void main() {
     TestUtils.init();
     db = await TestUtils.initIsar();
     await StoreService.init(storeRepository: IsarStoreRepository(db));
-    Store.put(StoreKey.currentUser, UserStub.admin);
-    Store.put(StoreKey.serverEndpoint, '');
-    Store.put(StoreKey.accessToken, '');
+    await Store.put(StoreKey.currentUser, UserStub.admin);
+    await Store.put(StoreKey.serverEndpoint, '');
+    await Store.put(StoreKey.accessToken, '');
   });
 
   setUp(() async {
@@ -85,10 +74,7 @@ void main() {
     mockCurrentAssetProvider = MockCurrentAssetProvider(AssetStub.image1);
     activityMock = MockAlbumActivity(_activities);
     overrides = [
-      albumActivityProvider(
-        AlbumStub.twoAsset.remoteId!,
-        AssetStub.image1.remoteId!,
-      ).overrideWith(() => activityMock),
+      albumActivityProvider(AlbumStub.twoAsset.remoteId!, AssetStub.image1.remoteId!).overrideWith(() => activityMock),
       currentAlbumProvider.overrideWith(() => mockCurrentAlbumProvider),
       currentAssetProvider.overrideWith(() => mockCurrentAssetProvider),
     ];
@@ -96,7 +82,7 @@ void main() {
     await db.writeTxn(() async {
       await db.clear();
       // Save all assets
-      await db.users.put(UserStub.admin);
+      await db.users.put(User.fromDto(UserStub.admin));
       await db.assets.putAll([AssetStub.image1, AssetStub.image2]);
       await db.albums.put(AlbumStub.twoAsset);
       await AlbumStub.twoAsset.owner.save();
@@ -108,148 +94,82 @@ void main() {
   });
 
   group("App bar", () {
-    testWidgets(
-      "No title when currentAsset != null",
-      (tester) async {
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: overrides,
-        );
+    testWidgets("No title when currentAsset != null", (tester) async {
+      await tester.pumpConsumerWidget(const ActivitiesPage(), overrides: overrides);
 
-        final listTile = tester.widget<AppBar>(find.byType(AppBar));
-        expect(listTile.title, isNull);
-      },
-    );
+      final listTile = tester.widget<AppBar>(find.byType(AppBar));
+      expect(listTile.title, isNull);
+    });
 
-    testWidgets(
-      "Album name as title when currentAsset == null",
-      (tester) async {
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: overrides,
-        );
-        await tester.pumpAndSettle();
+    testWidgets("Album name as title when currentAsset == null", (tester) async {
+      await tester.pumpConsumerWidget(const ActivitiesPage(), overrides: overrides);
+      await tester.pumpAndSettle();
 
-        mockCurrentAssetProvider.state = null;
-        await tester.pumpAndSettle();
+      mockCurrentAssetProvider.state = null;
+      await tester.pumpAndSettle();
 
-        expect(find.text(AlbumStub.twoAsset.name), findsOneWidget);
-        final listTile = tester.widget<AppBar>(find.byType(AppBar));
-        expect(listTile.title, isNotNull);
-      },
-    );
+      expect(find.text(AlbumStub.twoAsset.name), findsOneWidget);
+      final listTile = tester.widget<AppBar>(find.byType(AppBar));
+      expect(listTile.title, isNotNull);
+    });
   });
 
   group("Body", () {
-    testWidgets(
-      "Contains a stack with Activity List and Activity Input",
-      (tester) async {
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: overrides,
-        );
-        await tester.pumpAndSettle();
+    testWidgets("Contains a stack with Activity List and Activity Input", (tester) async {
+      await tester.pumpConsumerWidget(const ActivitiesPage(), overrides: overrides);
+      await tester.pumpAndSettle();
 
-        expect(
-          find.descendant(
-            of: find.byType(Stack),
-            matching: find.byType(ActivityTextField),
-          ),
-          findsOneWidget,
-        );
+      expect(find.descendant(of: find.byType(Stack), matching: find.byType(ActivityTextField)), findsOneWidget);
 
-        expect(
-          find.descendant(
-            of: find.byType(Stack),
-            matching: find.byType(ListView),
-          ),
-          findsOneWidget,
-        );
-      },
-    );
+      expect(find.descendant(of: find.byType(Stack), matching: find.byType(ListView)), findsOneWidget);
+    });
 
-    testWidgets(
-      "List Contains all dismissible activities",
-      (tester) async {
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: overrides,
-        );
-        await tester.pumpAndSettle();
+    testWidgets("List Contains all dismissible activities", (tester) async {
+      await tester.pumpConsumerWidget(const ActivitiesPage(), overrides: overrides);
+      await tester.pumpAndSettle();
 
-        final listFinder = find.descendant(
-          of: find.byType(Stack),
-          matching: find.byType(ListView),
-        );
-        final listChildren = find.descendant(
-          of: listFinder,
-          matching: find.byType(DismissibleActivity),
-        );
-        expect(listChildren, findsNWidgets(_activities.length));
-      },
-    );
+      final listFinder = find.descendant(of: find.byType(Stack), matching: find.byType(ListView));
+      final listChildren = find.descendant(of: listFinder, matching: find.byType(DismissibleActivity));
+      expect(listChildren, findsNWidgets(_activities.length));
+    });
 
-    testWidgets(
-      "Submitting text input adds a comment with the text",
-      (tester) async {
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: overrides,
-        );
-        await tester.pumpAndSettle();
+    testWidgets("Submitting text input adds a comment with the text", (tester) async {
+      await tester.pumpConsumerWidget(const ActivitiesPage(), overrides: overrides);
+      await tester.pumpAndSettle();
 
-        when(() => activityMock.addComment(any()))
-            .thenAnswer((_) => Future.value());
+      when(() => activityMock.addComment(any())).thenAnswer((_) => Future.value());
 
-        final textField = find.byType(TextField);
-        await tester.enterText(textField, 'Test comment');
-        await tester.testTextInput.receiveAction(TextInputAction.done);
+      final textField = find.byType(TextField);
+      await tester.enterText(textField, 'Test comment');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
 
-        verify(() => activityMock.addComment('Test comment'));
-      },
-    );
+      verify(() => activityMock.addComment('Test comment'));
+    });
 
-    testWidgets(
-      "Owner can remove all activities",
-      (tester) async {
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: overrides,
-        );
-        await tester.pumpAndSettle();
+    testWidgets("Owner can remove all activities", (tester) async {
+      await tester.pumpConsumerWidget(const ActivitiesPage(), overrides: overrides);
+      await tester.pumpAndSettle();
 
-        final deletableActivityFinder = find.byWidgetPredicate(
-          (widget) => widget is DismissibleActivity && widget.onDismiss != null,
-        );
-        expect(deletableActivityFinder, findsNWidgets(_activities.length));
-      },
-    );
+      final deletableActivityFinder = find.byWidgetPredicate(
+        (widget) => widget is DismissibleActivity && widget.onDismiss != null,
+      );
+      expect(deletableActivityFinder, findsNWidgets(_activities.length));
+    });
 
-    testWidgets(
-      "Non-Owner can remove only their activities",
-      (tester) async {
-        final mockCurrentUser = MockCurrentUserProvider();
+    testWidgets("Non-Owner can remove only their activities", (tester) async {
+      final mockCurrentUser = MockCurrentUserProvider();
 
-        await tester.pumpConsumerWidget(
-          const ActivitiesPage(),
-          overrides: [
-            ...overrides,
-            currentUserProvider.overrideWith((ref) => mockCurrentUser),
-          ],
-        );
-        mockCurrentUser.state = UserStub.user1;
-        await tester.pumpAndSettle();
+      await tester.pumpConsumerWidget(
+        const ActivitiesPage(),
+        overrides: [...overrides, currentUserProvider.overrideWith((ref) => mockCurrentUser)],
+      );
+      mockCurrentUser.state = UserStub.user1;
+      await tester.pumpAndSettle();
 
-        final deletableActivityFinder = find.byWidgetPredicate(
-          (widget) => widget is DismissibleActivity && widget.onDismiss != null,
-        );
-        expect(
-          deletableActivityFinder,
-          findsNWidgets(
-            _activities.where((a) => a.user == UserStub.user1).length,
-          ),
-        );
-      },
-    );
+      final deletableActivityFinder = find.byWidgetPredicate(
+        (widget) => widget is DismissibleActivity && widget.onDismiss != null,
+      );
+      expect(deletableActivityFinder, findsNWidgets(_activities.where((a) => a.user == UserStub.user1).length));
+    });
   });
 }

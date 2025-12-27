@@ -27,7 +27,8 @@
   <a href="README_ko_KR.md">한국어</a>
   <a href="README_de_DE.md">Deutsch</a>
   <a href="README_nl_NL.md">Nederlands</a>
-  <a href="README_zh_CN.md">中文</a>
+  <a href="README_zh_CN.md">简体中文</a>
+  <a href="README_zh_TW.md">正體中文</a>
   <a href="README_uk_UA.md">Українська</a>
   <a href="README_ru_RU.md">Русский</a>
   <a href="README_pt_BR.md">Português Brasileiro</a>
@@ -44,13 +45,13 @@
 
 ## Content
 
-- [Resmi Belgeler](https://immich.app/docs)
+- [Resmi Belgeler](https://docs.immich.app)
 - [Yol Haritası](https://github.com/orgs/immich-app/projects/1)
 - [Demo](#demo)
 - [Özellikler](#özellikler)
-- [Giriş](https://immich.app/docs/overview/introduction)
-- [Kurulum](https://immich.app/docs/install/requirements)
-- [Katkı Sağlama Rehberi](https://immich.app/docs/overview/support-the-project)
+- [Giriş](https://docs.immich.app/overview/introduction)
+- [Kurulum](https://docs.immich.app/install/requirements)
+- [Katkı Sağlama Rehberi](https://docs.immich.app/overview/support-the-project)
 
 ## Belgeler
 
@@ -58,18 +59,12 @@ Kurulum dahil olmak üzere resmi belgeleri https://immich.app/ adresinde bulabil
 
 ## Demo
 
-Web demo adresi: https://demo.immich.app
-
-Mobil uygulama için `Server Endpoint URL` olarak `https://demo.immich.app/api` adresini kullanabilirsiniz.
+Web demo adresi: https://demo.immich.app. Mobil uygulama için `Server Endpoint URL` olarak `https://demo.immich.app` adresini kullanabilirsiniz.
 
 ```bash title="Demo Bilgileri"
 Giriş bilgileri:
 email: demo@immich.app
 password: demo
-```
-
-```
-Server Özellikleri: Free-tier Oracle VM - Amsterdam - 2.4Ghz quad-core ARM64 CPU, 24GB RAM
 ```
 
 # Özellikler

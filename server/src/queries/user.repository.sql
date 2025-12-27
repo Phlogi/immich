@@ -3,220 +3,397 @@
 -- UserRepository.get
 select
   "id",
-  "email",
-  "createdAt",
-  "profileImagePath",
-  "isAdmin",
-  "shouldChangePassword",
-  "deletedAt",
-  "oauthId",
-  "updatedAt",
-  "storageLabel",
   "name",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
+  "status",
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
   "quotaSizeInBytes",
   "quotaUsageInBytes",
-  "status",
-  "profileChangedAt",
   (
     select
       coalesce(json_agg(agg), '[]')
     from
       (
         select
-          "user_metadata".*
+          "user_metadata"."key",
+          "user_metadata"."value"
         from
           "user_metadata"
         where
-          "users"."id" = "user_metadata"."userId"
+          "user"."id" = "user_metadata"."userId"
       ) as agg
   ) as "metadata"
 from
-  "users"
+  "user"
 where
-  "users"."id" = $1
-  and "users"."deletedAt" is null
+  "user"."id" = $1
+  and "user"."deletedAt" is null
 
 -- UserRepository.getAdmin
 select
   "id",
-  "email",
-  "createdAt",
-  "profileImagePath",
-  "isAdmin",
-  "shouldChangePassword",
-  "deletedAt",
-  "oauthId",
-  "updatedAt",
-  "storageLabel",
   "name",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
+  "status",
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
   "quotaSizeInBytes",
   "quotaUsageInBytes",
-  "status",
-  "profileChangedAt"
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "user_metadata"."key",
+          "user_metadata"."value"
+        from
+          "user_metadata"
+        where
+          "user"."id" = "user_metadata"."userId"
+      ) as agg
+  ) as "metadata"
 from
-  "users"
+  "user"
 where
-  "users"."isAdmin" = $1
-  and "users"."deletedAt" is null
+  "user"."isAdmin" = $1
+  and "user"."deletedAt" is null
+
+-- UserRepository.getFileSamples
+select
+  "id",
+  "profileImagePath"
+from
+  "user"
+where
+  "profileImagePath" != ''
+limit
+  3
 
 -- UserRepository.hasAdmin
 select
-  "users"."id"
+  "user"."id"
 from
-  "users"
+  "user"
 where
-  "users"."isAdmin" = $1
-  and "users"."deletedAt" is null
+  "user"."isAdmin" = $1
+  and "user"."deletedAt" is null
+
+-- UserRepository.getForPinCode
+select
+  "user"."pinCode",
+  "user"."password"
+from
+  "user"
+where
+  "user"."id" = $1
+  and "user"."deletedAt" is null
+
+-- UserRepository.getForChangePassword
+select
+  "user"."id",
+  "user"."password"
+from
+  "user"
+where
+  "user"."id" = $1
+  and "user"."deletedAt" is null
 
 -- UserRepository.getByEmail
 select
   "id",
-  "email",
-  "createdAt",
-  "profileImagePath",
-  "isAdmin",
-  "shouldChangePassword",
-  "deletedAt",
-  "oauthId",
-  "updatedAt",
-  "storageLabel",
   "name",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
+  "status",
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
   "quotaSizeInBytes",
   "quotaUsageInBytes",
-  "status",
-  "profileChangedAt"
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "user_metadata"."key",
+          "user_metadata"."value"
+        from
+          "user_metadata"
+        where
+          "user"."id" = "user_metadata"."userId"
+      ) as agg
+  ) as "metadata"
 from
-  "users"
+  "user"
 where
   "email" = $1
-  and "users"."deletedAt" is null
+  and "user"."deletedAt" is null
 
 -- UserRepository.getByStorageLabel
 select
   "id",
-  "email",
-  "createdAt",
-  "profileImagePath",
-  "isAdmin",
-  "shouldChangePassword",
-  "deletedAt",
-  "oauthId",
-  "updatedAt",
-  "storageLabel",
   "name",
-  "quotaSizeInBytes",
-  "quotaUsageInBytes",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
   "status",
-  "profileChangedAt"
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
+  "quotaSizeInBytes",
+  "quotaUsageInBytes"
 from
-  "users"
+  "user"
 where
-  "users"."storageLabel" = $1
-  and "users"."deletedAt" is null
+  "user"."storageLabel" = $1
+  and "user"."deletedAt" is null
 
 -- UserRepository.getByOAuthId
 select
   "id",
-  "email",
-  "createdAt",
-  "profileImagePath",
-  "isAdmin",
-  "shouldChangePassword",
-  "deletedAt",
-  "oauthId",
-  "updatedAt",
-  "storageLabel",
   "name",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
+  "status",
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
   "quotaSizeInBytes",
   "quotaUsageInBytes",
-  "status",
-  "profileChangedAt"
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "user_metadata"."key",
+          "user_metadata"."value"
+        from
+          "user_metadata"
+        where
+          "user"."id" = "user_metadata"."userId"
+      ) as agg
+  ) as "metadata"
 from
-  "users"
+  "user"
 where
-  "users"."oauthId" = $1
-  and "users"."deletedAt" is null
+  "user"."oauthId" = $1
+  and "user"."deletedAt" is null
+
+-- UserRepository.getDeletedAfter
+select
+  "id"
+from
+  "user"
+where
+  "user"."deletedAt" < $1
+
+-- UserRepository.getList (with deleted)
+select
+  "id",
+  "name",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
+  "status",
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
+  "quotaSizeInBytes",
+  "quotaUsageInBytes",
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "user_metadata"."key",
+          "user_metadata"."value"
+        from
+          "user_metadata"
+        where
+          "user"."id" = "user_metadata"."userId"
+      ) as agg
+  ) as "metadata"
+from
+  "user"
+order by
+  "createdAt" desc
+
+-- UserRepository.getList (without deleted)
+select
+  "id",
+  "name",
+  "email",
+  "avatarColor",
+  "profileImagePath",
+  "profileChangedAt",
+  "createdAt",
+  "updatedAt",
+  "deletedAt",
+  "isAdmin",
+  "status",
+  "oauthId",
+  "profileImagePath",
+  "shouldChangePassword",
+  "storageLabel",
+  "quotaSizeInBytes",
+  "quotaUsageInBytes",
+  (
+    select
+      coalesce(json_agg(agg), '[]')
+    from
+      (
+        select
+          "user_metadata"."key",
+          "user_metadata"."value"
+        from
+          "user_metadata"
+        where
+          "user"."id" = "user_metadata"."userId"
+      ) as agg
+  ) as "metadata"
+from
+  "user"
+where
+  "user"."deletedAt" is null
+order by
+  "createdAt" desc
 
 -- UserRepository.getUserStats
 select
-  "users"."id" as "userId",
-  "users"."name" as "userName",
-  "users"."quotaSizeInBytes" as "quotaSizeInBytes",
+  "user"."id" as "userId",
+  "user"."name" as "userName",
+  "user"."quotaSizeInBytes",
   count(*) filter (
     where
       (
-        "assets"."type" = $1
-        and "assets"."isVisible" = $2
+        "asset"."type" = 'IMAGE'
+        and "asset"."visibility" != 'hidden'
       )
   ) as "photos",
   count(*) filter (
     where
       (
-        "assets"."type" = $3
-        and "assets"."isVisible" = $4
+        "asset"."type" = 'VIDEO'
+        and "asset"."visibility" != 'hidden'
       )
   ) as "videos",
   coalesce(
-    sum("exif"."fileSizeInByte") filter (
+    sum("asset_exif"."fileSizeInByte") filter (
       where
-        "assets"."libraryId" is null
+        "asset"."libraryId" is null
     ),
     0
   ) as "usage",
   coalesce(
-    sum("exif"."fileSizeInByte") filter (
+    sum("asset_exif"."fileSizeInByte") filter (
       where
         (
-          "assets"."libraryId" is null
-          and "assets"."type" = $5
+          "asset"."libraryId" is null
+          and "asset"."type" = 'IMAGE'
         )
     ),
     0
   ) as "usagePhotos",
   coalesce(
-    sum("exif"."fileSizeInByte") filter (
+    sum("asset_exif"."fileSizeInByte") filter (
       where
         (
-          "assets"."libraryId" is null
-          and "assets"."type" = $6
+          "asset"."libraryId" is null
+          and "asset"."type" = 'VIDEO'
         )
     ),
     0
   ) as "usageVideos"
 from
-  "users"
-  left join "assets" on "assets"."ownerId" = "users"."id"
-  left join "exif" on "exif"."assetId" = "assets"."id"
-where
-  "assets"."deletedAt" is null
+  "user"
+  left join "asset" on "asset"."ownerId" = "user"."id"
+  and "asset"."deletedAt" is null
+  left join "asset_exif" on "asset_exif"."assetId" = "asset"."id"
 group by
-  "users"."id"
+  "user"."id"
 order by
-  "users"."createdAt" asc
+  "user"."createdAt" asc
+
+-- UserRepository.getCount
+select
+  count(*) as "count"
+from
+  "user"
+where
+  "user"."deletedAt" is null
 
 -- UserRepository.updateUsage
-update "users"
+update "user"
 set
   "quotaUsageInBytes" = "quotaUsageInBytes" + $1,
   "updatedAt" = $2
 where
   "id" = $3::uuid
-  and "users"."deletedAt" is null
+  and "user"."deletedAt" is null
 
 -- UserRepository.syncUsage
-update "users"
+update "user"
 set
   "quotaUsageInBytes" = (
     select
-      coalesce(sum("exif"."fileSizeInByte"), 0) as "usage"
+      coalesce(sum("asset_exif"."fileSizeInByte"), 0) as "usage"
     from
-      "assets"
-      left join "exif" on "exif"."assetId" = "assets"."id"
+      "asset"
+      left join "asset_exif" on "asset_exif"."assetId" = "asset"."id"
     where
-      "assets"."libraryId" is null
-      and "assets"."ownerId" = "users"."id"
+      "asset"."libraryId" is null
+      and "asset"."ownerId" = "user"."id"
   ),
   "updatedAt" = $1
 where
-  "users"."deletedAt" is null
-  and "users"."id" = $2::uuid
+  "user"."deletedAt" is null
+  and "user"."id" = $2::uuid

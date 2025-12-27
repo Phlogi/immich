@@ -16,10 +16,14 @@ class ServerApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'DELETE /server/license' operation and returns the [Response].
+  /// Delete server product key
+  ///
+  /// Delete the currently set server product key.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> deleteServerLicenseWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/license';
+    final apiPath = r'/server/license';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -32,7 +36,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -42,6 +46,9 @@ class ServerApi {
     );
   }
 
+  /// Delete server product key
+  ///
+  /// Delete the currently set server product key.
   Future<void> deleteServerLicense() async {
     final response = await deleteServerLicenseWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -49,10 +56,14 @@ class ServerApi {
     }
   }
 
-  /// Performs an HTTP 'GET /server/about' operation and returns the [Response].
+  /// Get server information
+  ///
+  /// Retrieve a list of information about the server.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getAboutInfoWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/about';
+    final apiPath = r'/server/about';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -65,7 +76,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -75,6 +86,9 @@ class ServerApi {
     );
   }
 
+  /// Get server information
+  ///
+  /// Retrieve a list of information about the server.
   Future<ServerAboutResponseDto?> getAboutInfo() async {
     final response = await getAboutInfoWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -90,10 +104,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/config' operation and returns the [Response].
-  Future<Response> getServerConfigWithHttpInfo() async {
+  /// Get APK links
+  ///
+  /// Retrieve links to the APKs for the current server version.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getApkLinksWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/config';
+    final apiPath = r'/server/apk-links';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -106,7 +124,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -116,6 +134,57 @@ class ServerApi {
     );
   }
 
+  /// Get APK links
+  ///
+  /// Retrieve links to the APKs for the current server version.
+  Future<ServerApkLinksDto?> getApkLinks() async {
+    final response = await getApkLinksWithHttpInfo();
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'ServerApkLinksDto',) as ServerApkLinksDto;
+    
+    }
+    return null;
+  }
+
+  /// Get config
+  ///
+  /// Retrieve the current server configuration.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getServerConfigWithHttpInfo() async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/server/config';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Get config
+  ///
+  /// Retrieve the current server configuration.
   Future<ServerConfigDto?> getServerConfig() async {
     final response = await getServerConfigWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -131,10 +200,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/features' operation and returns the [Response].
+  /// Get features
+  ///
+  /// Retrieve available features supported by this server.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getServerFeaturesWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/features';
+    final apiPath = r'/server/features';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -147,7 +220,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -157,6 +230,9 @@ class ServerApi {
     );
   }
 
+  /// Get features
+  ///
+  /// Retrieve available features supported by this server.
   Future<ServerFeaturesDto?> getServerFeatures() async {
     final response = await getServerFeaturesWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -172,10 +248,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/license' operation and returns the [Response].
+  /// Get product key
+  ///
+  /// Retrieve information about whether the server currently has a product key registered.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getServerLicenseWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/license';
+    final apiPath = r'/server/license';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -188,7 +268,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -198,6 +278,9 @@ class ServerApi {
     );
   }
 
+  /// Get product key
+  ///
+  /// Retrieve information about whether the server currently has a product key registered.
   Future<LicenseResponseDto?> getServerLicense() async {
     final response = await getServerLicenseWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -213,10 +296,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/statistics' operation and returns the [Response].
+  /// Get statistics
+  ///
+  /// Retrieve statistics about the entire Immich instance such as asset counts.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getServerStatisticsWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/statistics';
+    final apiPath = r'/server/statistics';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -229,7 +316,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -239,6 +326,9 @@ class ServerApi {
     );
   }
 
+  /// Get statistics
+  ///
+  /// Retrieve statistics about the entire Immich instance such as asset counts.
   Future<ServerStatsResponseDto?> getServerStatistics() async {
     final response = await getServerStatisticsWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -254,10 +344,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/version' operation and returns the [Response].
+  /// Get server version
+  ///
+  /// Retrieve the current server version in semantic versioning (semver) format.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getServerVersionWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/version';
+    final apiPath = r'/server/version';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -270,7 +364,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -280,6 +374,9 @@ class ServerApi {
     );
   }
 
+  /// Get server version
+  ///
+  /// Retrieve the current server version in semantic versioning (semver) format.
   Future<ServerVersionResponseDto?> getServerVersion() async {
     final response = await getServerVersionWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -295,10 +392,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/storage' operation and returns the [Response].
+  /// Get storage
+  ///
+  /// Retrieve the current storage utilization information of the server.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getStorageWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/storage';
+    final apiPath = r'/server/storage';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -311,7 +412,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -321,6 +422,9 @@ class ServerApi {
     );
   }
 
+  /// Get storage
+  ///
+  /// Retrieve the current storage utilization information of the server.
   Future<ServerStorageResponseDto?> getStorage() async {
     final response = await getStorageWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -336,10 +440,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/media-types' operation and returns the [Response].
+  /// Get supported media types
+  ///
+  /// Retrieve all media types supported by the server.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getSupportedMediaTypesWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/media-types';
+    final apiPath = r'/server/media-types';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -352,7 +460,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -362,6 +470,9 @@ class ServerApi {
     );
   }
 
+  /// Get supported media types
+  ///
+  /// Retrieve all media types supported by the server.
   Future<ServerMediaTypesResponseDto?> getSupportedMediaTypes() async {
     final response = await getSupportedMediaTypesWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -377,10 +488,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/theme' operation and returns the [Response].
+  /// Get theme
+  ///
+  /// Retrieve the custom CSS, if existent.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getThemeWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/theme';
+    final apiPath = r'/server/theme';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -393,7 +508,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -403,6 +518,9 @@ class ServerApi {
     );
   }
 
+  /// Get theme
+  ///
+  /// Retrieve the custom CSS, if existent.
   Future<ServerThemeDto?> getTheme() async {
     final response = await getThemeWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -418,10 +536,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/version-history' operation and returns the [Response].
-  Future<Response> getVersionHistoryWithHttpInfo() async {
+  /// Get version check status
+  ///
+  /// Retrieve information about the last time the version check ran.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getVersionCheckWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/version-history';
+    final apiPath = r'/server/version-check';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -434,7 +556,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -444,6 +566,57 @@ class ServerApi {
     );
   }
 
+  /// Get version check status
+  ///
+  /// Retrieve information about the last time the version check ran.
+  Future<VersionCheckStateResponseDto?> getVersionCheck() async {
+    final response = await getVersionCheckWithHttpInfo();
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'VersionCheckStateResponseDto',) as VersionCheckStateResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Get version history
+  ///
+  /// Retrieve a list of past versions the server has been on.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  Future<Response> getVersionHistoryWithHttpInfo() async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/server/version-history';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Get version history
+  ///
+  /// Retrieve a list of past versions the server has been on.
   Future<List<ServerVersionHistoryResponseDto>?> getVersionHistory() async {
     final response = await getVersionHistoryWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -462,10 +635,14 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /server/ping' operation and returns the [Response].
+  /// Ping
+  ///
+  /// Pong
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> pingServerWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/server/ping';
+    final apiPath = r'/server/ping';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -478,7 +655,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -488,6 +665,9 @@ class ServerApi {
     );
   }
 
+  /// Ping
+  ///
+  /// Pong
   Future<ServerPingResponse?> pingServer() async {
     final response = await pingServerWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -503,13 +683,18 @@ class ServerApi {
     return null;
   }
 
-  /// Performs an HTTP 'PUT /server/license' operation and returns the [Response].
+  /// Set server product key
+  ///
+  /// Validate and set the server product key if successful.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [LicenseKeyDto] licenseKeyDto (required):
   Future<Response> setServerLicenseWithHttpInfo(LicenseKeyDto licenseKeyDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/server/license';
+    final apiPath = r'/server/license';
 
     // ignore: prefer_final_locals
     Object? postBody = licenseKeyDto;
@@ -522,7 +707,7 @@ class ServerApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -532,6 +717,10 @@ class ServerApi {
     );
   }
 
+  /// Set server product key
+  ///
+  /// Validate and set the server product key if successful.
+  ///
   /// Parameters:
   ///
   /// * [LicenseKeyDto] licenseKeyDto (required):

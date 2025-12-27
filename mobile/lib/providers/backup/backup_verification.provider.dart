@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:immich_mobile/providers/backup/backup.provider.dart';
-import 'package:immich_mobile/services/backup_verification.service.dart';
 import 'package:immich_mobile/entities/asset.entity.dart';
 import 'package:immich_mobile/providers/asset.provider.dart';
+import 'package:immich_mobile/providers/backup/backup.provider.dart';
+import 'package:immich_mobile/services/backup_verification.service.dart';
 import 'package:immich_mobile/widgets/common/confirm_dialog.dart';
 import 'package:immich_mobile/widgets/common/immich_toast.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -23,8 +23,7 @@ class BackupVerification extends _$BackupVerification {
       state = true;
       final backupState = ref.read(backupProvider);
 
-      if (backupState.allUniqueAssets.length >
-          backupState.selectedAlbumsBackupAssetsIds.length) {
+      if (backupState.allUniqueAssets.length > backupState.selectedAlbumsBackupAssetsIds.length) {
         if (context.mounted) {
           ImmichToast.show(
             context: context,
@@ -45,12 +44,10 @@ class BackupVerification extends _$BackupVerification {
         }
         return;
       }
-      WakelockPlus.enable();
+      unawaited(WakelockPlus.enable());
 
       const limit = 100;
-      final toDelete = await ref
-          .read(backupVerificationServiceProvider)
-          .findWronglyBackedUpAssets(limit: limit);
+      final toDelete = await ref.read(backupVerificationServiceProvider).findWronglyBackedUpAssets(limit: limit);
       if (toDelete.isEmpty) {
         if (context.mounted) {
           ImmichToast.show(
@@ -76,28 +73,23 @@ class BackupVerification extends _$BackupVerification {
         }
       }
     } finally {
-      WakelockPlus.disable();
+      unawaited(WakelockPlus.disable());
       state = false;
     }
   }
 
-  Future<void> _performDeletion(
-    BuildContext context,
-    List<Asset> assets,
-  ) async {
+  Future<void> _performDeletion(BuildContext context, List<Asset> assets) async {
     try {
       state = true;
       if (context.mounted) {
-        ImmichToast.show(
-          context: context,
-          msg: "Deleting ${assets.length} assets on the server...",
-        );
+        ImmichToast.show(context: context, msg: "Deleting ${assets.length} assets on the server...");
       }
       await ref.read(assetProvider.notifier).deleteAssets(assets, force: true);
       if (context.mounted) {
         ImmichToast.show(
           context: context,
-          msg: "Deleted ${assets.length} assets on the server. "
+          msg:
+              "Deleted ${assets.length} assets on the server. "
               "You can now start a manual backup",
           toastType: ToastType.success,
         );

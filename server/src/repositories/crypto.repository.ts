@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { compareSync, hash } from 'bcrypt';
+import jwt from 'jsonwebtoken';
 import { createHash, createPublicKey, createVerify, randomBytes, randomUUID } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 
@@ -54,7 +55,15 @@ export class CryptoRepository {
     });
   }
 
-  newPassword(bytes: number) {
+  randomBytesAsText(bytes: number) {
     return randomBytes(bytes).toString('base64').replaceAll(/\W/g, '');
+  }
+
+  signJwt(payload: string | object | Buffer, secret: string, options?: jwt.SignOptions): string {
+    return jwt.sign(payload, secret, { algorithm: 'HS256', ...options });
+  }
+
+  verifyJwt<T = any>(token: string, secret: string): T {
+    return jwt.verify(token, secret, { algorithms: ['HS256'] }) as T;
   }
 }

@@ -5,14 +5,15 @@ import {
   CQMode,
   ImageFormat,
   LogLevel,
+  OAuthTokenEndpointAuthMethod,
   QueueName,
   ToneMapping,
-  TranscodeHWAccel,
+  TranscodeHardwareAcceleration,
   TranscodePolicy,
   VideoCodec,
   VideoContainer,
 } from 'src/enum';
-import { ConcurrentQueueName, ImageOptions } from 'src/types';
+import { ConcurrentQueueName, FullsizeImageOptions, ImageOptions } from 'src/types';
 
 export interface SystemConfig {
   backup: {
@@ -41,7 +42,7 @@ export interface SystemConfig {
     twoPass: boolean;
     preferredHwDevice: string;
     transcode: TranscodePolicy;
-    accel: TranscodeHWAccel;
+    accel: TranscodeHardwareAcceleration;
     accelDecode: boolean;
     tonemap: ToneMapping;
   };
@@ -53,6 +54,11 @@ export interface SystemConfig {
   machineLearning: {
     enabled: boolean;
     urls: string[];
+    availabilityChecks: {
+      enabled: boolean;
+      timeout: number;
+      interval: number;
+    };
     clip: {
       enabled: boolean;
       modelName: string;
@@ -67,6 +73,13 @@ export interface SystemConfig {
       minScore: number;
       minFaces: number;
       maxDistance: number;
+    };
+    ocr: {
+      enabled: boolean;
+      modelName: string;
+      minDetectionScore: number;
+      minRecognitionScore: number;
+      maxResolution: number;
     };
   };
   map: {
@@ -88,7 +101,7 @@ export interface SystemConfig {
     buttonText: string;
     clientId: string;
     clientSecret: string;
-    defaultStorageQuota: number;
+    defaultStorageQuota: number | null;
     enabled: boolean;
     issuerUrl: string;
     mobileOverrideEnabled: boolean;
@@ -96,8 +109,11 @@ export interface SystemConfig {
     scope: string;
     signingAlgorithm: string;
     profileSigningAlgorithm: string;
+    tokenEndpointAuthMethod: OAuthTokenEndpointAuthMethod;
+    timeout: number;
     storageLabelClaim: string;
     storageQuotaClaim: string;
+    roleClaim: string;
   };
   passwordLogin: {
     enabled: boolean;
@@ -112,9 +128,18 @@ export interface SystemConfig {
     preview: ImageOptions;
     colorspace: Colorspace;
     extractEmbedded: boolean;
+    fullsize: FullsizeImageOptions;
   };
   newVersionCheck: {
     enabled: boolean;
+  };
+  nightlyTasks: {
+    startTime: string;
+    databaseCleanup: boolean;
+    missingThumbnails: boolean;
+    clusterNewFaces: boolean;
+    generateMemories: boolean;
+    syncQuotaUsage: boolean;
   };
   trash: {
     enabled: boolean;
@@ -141,6 +166,7 @@ export interface SystemConfig {
         ignoreCert: boolean;
         host: string;
         port: number;
+        secure: boolean;
         username: string;
         password: string;
       };
@@ -163,6 +189,8 @@ export interface SystemConfig {
   };
 }
 
+export type MachineLearningConfig = SystemConfig['machineLearning'];
+
 export const defaults = Object.freeze<SystemConfig>({
   backup: {
     database: {
@@ -177,43 +205,50 @@ export const defaults = Object.freeze<SystemConfig>({
     preset: 'ultrafast',
     targetVideoCodec: VideoCodec.H264,
     acceptedVideoCodecs: [VideoCodec.H264],
-    targetAudioCodec: AudioCodec.AAC,
-    acceptedAudioCodecs: [AudioCodec.AAC, AudioCodec.MP3, AudioCodec.LIBOPUS, AudioCodec.PCMS16LE],
-    acceptedContainers: [VideoContainer.MOV, VideoContainer.OGG, VideoContainer.WEBM],
+    targetAudioCodec: AudioCodec.Aac,
+    acceptedAudioCodecs: [AudioCodec.Aac, AudioCodec.Mp3, AudioCodec.LibOpus],
+    acceptedContainers: [VideoContainer.Mov, VideoContainer.Ogg, VideoContainer.Webm],
     targetResolution: '720',
     maxBitrate: '0',
     bframes: -1,
     refs: 0,
     gopSize: 0,
     temporalAQ: false,
-    cqMode: CQMode.AUTO,
+    cqMode: CQMode.Auto,
     twoPass: false,
     preferredHwDevice: 'auto',
-    transcode: TranscodePolicy.REQUIRED,
-    tonemap: ToneMapping.HABLE,
-    accel: TranscodeHWAccel.DISABLED,
+    transcode: TranscodePolicy.Required,
+    tonemap: ToneMapping.Hable,
+    accel: TranscodeHardwareAcceleration.Disabled,
     accelDecode: false,
   },
   job: {
-    [QueueName.BACKGROUND_TASK]: { concurrency: 5 },
-    [QueueName.SMART_SEARCH]: { concurrency: 2 },
-    [QueueName.METADATA_EXTRACTION]: { concurrency: 5 },
-    [QueueName.FACE_DETECTION]: { concurrency: 2 },
-    [QueueName.SEARCH]: { concurrency: 5 },
-    [QueueName.SIDECAR]: { concurrency: 5 },
-    [QueueName.LIBRARY]: { concurrency: 5 },
-    [QueueName.MIGRATION]: { concurrency: 5 },
-    [QueueName.THUMBNAIL_GENERATION]: { concurrency: 3 },
-    [QueueName.VIDEO_CONVERSION]: { concurrency: 1 },
-    [QueueName.NOTIFICATION]: { concurrency: 5 },
+    [QueueName.BackgroundTask]: { concurrency: 5 },
+    [QueueName.SmartSearch]: { concurrency: 2 },
+    [QueueName.MetadataExtraction]: { concurrency: 5 },
+    [QueueName.FaceDetection]: { concurrency: 2 },
+    [QueueName.Search]: { concurrency: 5 },
+    [QueueName.Sidecar]: { concurrency: 5 },
+    [QueueName.Library]: { concurrency: 5 },
+    [QueueName.Migration]: { concurrency: 5 },
+    [QueueName.ThumbnailGeneration]: { concurrency: 3 },
+    [QueueName.VideoConversion]: { concurrency: 1 },
+    [QueueName.Notification]: { concurrency: 5 },
+    [QueueName.Ocr]: { concurrency: 1 },
+    [QueueName.Workflow]: { concurrency: 5 },
   },
   logging: {
     enabled: true,
-    level: LogLevel.LOG,
+    level: LogLevel.Log,
   },
   machineLearning: {
     enabled: process.env.IMMICH_MACHINE_LEARNING_ENABLED !== 'false',
     urls: [process.env.IMMICH_MACHINE_LEARNING_URL || 'http://immich-machine-learning:3003'],
+    availabilityChecks: {
+      enabled: true,
+      timeout: Number(process.env.IMMICH_MACHINE_LEARNING_PING_TIMEOUT) || 2000,
+      interval: 30_000,
+    },
     clip: {
       enabled: true,
       modelName: 'ViT-B-32__openai',
@@ -228,6 +263,13 @@ export const defaults = Object.freeze<SystemConfig>({
       minScore: 0.7,
       maxDistance: 0.5,
       minFaces: 3,
+    },
+    ocr: {
+      enabled: true,
+      modelName: 'PP-OCRv5_mobile',
+      minDetectionScore: 0.5,
+      minRecognitionScore: 0.8,
+      maxResolution: 736,
     },
   },
   map: {
@@ -249,7 +291,7 @@ export const defaults = Object.freeze<SystemConfig>({
     buttonText: 'Login with OAuth',
     clientId: '',
     clientSecret: '',
-    defaultStorageQuota: 0,
+    defaultStorageQuota: null,
     enabled: false,
     issuerUrl: '',
     mobileOverrideEnabled: false,
@@ -259,6 +301,9 @@ export const defaults = Object.freeze<SystemConfig>({
     profileSigningAlgorithm: 'none',
     storageLabelClaim: 'preferred_username',
     storageQuotaClaim: 'immich_quota',
+    roleClaim: 'immich_role',
+    tokenEndpointAuthMethod: OAuthTokenEndpointAuthMethod.ClientSecretPost,
+    timeout: 30_000,
   },
   passwordLogin: {
     enabled: true,
@@ -270,20 +315,33 @@ export const defaults = Object.freeze<SystemConfig>({
   },
   image: {
     thumbnail: {
-      format: ImageFormat.WEBP,
+      format: ImageFormat.Webp,
       size: 250,
       quality: 80,
     },
     preview: {
-      format: ImageFormat.JPEG,
+      format: ImageFormat.Jpeg,
       size: 1440,
       quality: 80,
     },
     colorspace: Colorspace.P3,
     extractEmbedded: false,
+    fullsize: {
+      enabled: false,
+      format: ImageFormat.Jpeg,
+      quality: 80,
+    },
   },
   newVersionCheck: {
     enabled: true,
+  },
+  nightlyTasks: {
+    startTime: '00:00',
+    databaseCleanup: true,
+    generateMemories: true,
+    syncQuotaUsage: true,
+    missingThumbnails: true,
+    clusterNewFaces: true,
   },
   trash: {
     enabled: true,
@@ -315,6 +373,7 @@ export const defaults = Object.freeze<SystemConfig>({
         ignoreCert: false,
         host: '',
         port: 587,
+        secure: false,
         username: '',
         password: '',
       },

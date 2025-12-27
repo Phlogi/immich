@@ -1,22 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsDateString,
-  IsEnum,
   IsInt,
   IsLatitude,
   IsLongitude,
   IsNotEmpty,
+  IsObject,
   IsPositive,
   IsString,
+  IsTimeZone,
   Max,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
-import { AssetType } from 'src/enum';
+import { AssetMetadataKey, AssetType, AssetVisibility } from 'src/enum';
 import { AssetStats } from 'src/repositories/asset.repository';
-import { Optional, ValidateBoolean, ValidateUUID } from 'src/validation';
+import { IsNotSiblingOf, Optional, ValidateBoolean, ValidateEnum, ValidateUUID } from 'src/validation';
 
 export class DeviceIdDto {
   @IsNotEmpty()
@@ -32,8 +35,8 @@ export class UpdateAssetBase {
   @ValidateBoolean({ optional: true })
   isFavorite?: boolean;
 
-  @ValidateBoolean({ optional: true })
-  isArchived?: boolean;
+  @ValidateEnum({ enum: AssetVisibility, name: 'AssetVisibility', optional: true })
+  visibility?: AssetVisibility;
 
   @Optional()
   @IsDateString()
@@ -54,6 +57,10 @@ export class UpdateAssetBase {
   @Max(5)
   @Min(-1)
   rating?: number;
+
+  @Optional()
+  @IsString()
+  description?: string;
 }
 
 export class AssetBulkUpdateDto extends UpdateAssetBase {
@@ -62,13 +69,19 @@ export class AssetBulkUpdateDto extends UpdateAssetBase {
 
   @Optional()
   duplicateId?: string | null;
+
+  @IsNotSiblingOf(['dateTimeOriginal'])
+  @Optional()
+  @IsInt()
+  dateTimeRelative?: number;
+
+  @IsNotSiblingOf(['dateTimeOriginal'])
+  @IsTimeZone()
+  @Optional()
+  timeZone?: string;
 }
 
 export class UpdateAssetDto extends UpdateAssetBase {
-  @Optional()
-  @IsString()
-  description?: string;
-
   @ValidateUUID({ optional: true, nullable: true })
   livePhotoVideoId?: string | null;
 }
@@ -99,14 +112,13 @@ export enum AssetJobName {
 }
 
 export class AssetJobsDto extends AssetIdsDto {
-  @ApiProperty({ enumName: 'AssetJobName', enum: AssetJobName })
-  @IsEnum(AssetJobName)
+  @ValidateEnum({ enum: AssetJobName, name: 'AssetJobName' })
   name!: AssetJobName;
 }
 
 export class AssetStatsDto {
-  @ValidateBoolean({ optional: true })
-  isArchived?: boolean;
+  @ValidateEnum({ enum: AssetVisibility, name: 'AssetVisibility', optional: true })
+  visibility?: AssetVisibility;
 
   @ValidateBoolean({ optional: true })
   isFavorite?: boolean;
@@ -126,10 +138,69 @@ export class AssetStatsResponseDto {
   total!: number;
 }
 
+export class AssetMetadataRouteParams {
+  @ValidateUUID()
+  id!: string;
+
+  @ValidateEnum({ enum: AssetMetadataKey, name: 'AssetMetadataKey' })
+  key!: AssetMetadataKey;
+}
+
+export class AssetMetadataUpsertDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AssetMetadataUpsertItemDto)
+  items!: AssetMetadataUpsertItemDto[];
+}
+
+export class AssetMetadataUpsertItemDto {
+  @ValidateEnum({ enum: AssetMetadataKey, name: 'AssetMetadataKey' })
+  key!: AssetMetadataKey;
+
+  @IsObject()
+  value!: object;
+}
+
+export class AssetMetadataMobileAppDto {
+  @IsString()
+  @Optional()
+  iCloudId?: string;
+}
+
+export class AssetMetadataResponseDto {
+  @ValidateEnum({ enum: AssetMetadataKey, name: 'AssetMetadataKey' })
+  key!: AssetMetadataKey;
+  value!: object;
+  updatedAt!: Date;
+}
+
+export class AssetCopyDto {
+  @ValidateUUID()
+  sourceId!: string;
+
+  @ValidateUUID()
+  targetId!: string;
+
+  @ValidateBoolean({ optional: true, default: true })
+  sharedLinks?: boolean;
+
+  @ValidateBoolean({ optional: true, default: true })
+  albums?: boolean;
+
+  @ValidateBoolean({ optional: true, default: true })
+  sidecar?: boolean;
+
+  @ValidateBoolean({ optional: true, default: true })
+  stack?: boolean;
+
+  @ValidateBoolean({ optional: true, default: true })
+  favorite?: boolean;
+}
+
 export const mapStats = (stats: AssetStats): AssetStatsResponseDto => {
   return {
-    images: stats[AssetType.IMAGE],
-    videos: stats[AssetType.VIDEO],
+    images: stats[AssetType.Image],
+    videos: stats[AssetType.Video],
     total: Object.values(stats).reduce((total, value) => total + value, 0),
   };
 };

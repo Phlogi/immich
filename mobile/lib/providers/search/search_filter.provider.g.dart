@@ -7,7 +7,7 @@ part of 'search_filter.provider.dart';
 // **************************************************************************
 
 String _$getSearchSuggestionsHash() =>
-    r'bc1e9a1a060868f14e6eb970d2251dbfe39c6866';
+    r'bc30a65e8fcb273cbd07bab876baf67bcc794737';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -95,29 +95,28 @@ class GetSearchSuggestionsProvider
     String? make,
     String? model,
   }) : this._internal(
-          (ref) => getSearchSuggestions(
-            ref as GetSearchSuggestionsRef,
-            type,
-            locationCountry: locationCountry,
-            locationState: locationState,
-            make: make,
-            model: model,
-          ),
-          from: getSearchSuggestionsProvider,
-          name: r'getSearchSuggestionsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$getSearchSuggestionsHash,
-          dependencies: GetSearchSuggestionsFamily._dependencies,
-          allTransitiveDependencies:
-              GetSearchSuggestionsFamily._allTransitiveDependencies,
-          type: type,
-          locationCountry: locationCountry,
-          locationState: locationState,
-          make: make,
-          model: model,
-        );
+         (ref) => getSearchSuggestions(
+           ref as GetSearchSuggestionsRef,
+           type,
+           locationCountry: locationCountry,
+           locationState: locationState,
+           make: make,
+           model: model,
+         ),
+         from: getSearchSuggestionsProvider,
+         name: r'getSearchSuggestionsProvider',
+         debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+             ? null
+             : _$getSearchSuggestionsHash,
+         dependencies: GetSearchSuggestionsFamily._dependencies,
+         allTransitiveDependencies:
+             GetSearchSuggestionsFamily._allTransitiveDependencies,
+         type: type,
+         locationCountry: locationCountry,
+         locationState: locationState,
+         make: make,
+         model: model,
+       );
 
   GetSearchSuggestionsProvider._internal(
     super._createNotifier, {
@@ -189,6 +188,8 @@ class GetSearchSuggestionsProvider
   }
 }
 
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
 mixin GetSearchSuggestionsRef on AutoDisposeFutureProviderRef<List<String>> {
   /// The parameter `type` of this provider.
   SearchSuggestionType get type;
@@ -225,5 +226,6 @@ class _GetSearchSuggestionsProviderElement
   @override
   String? get model => (origin as GetSearchSuggestionsProvider).model;
 }
+
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

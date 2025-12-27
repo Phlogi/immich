@@ -1,20 +1,5 @@
-// ignore_for_file: constant_identifier_names
-
-import 'package:logging/logging.dart';
-
 /// Log levels according to dart logging [Level]
-enum LogLevel {
-  ALL,
-  FINEST,
-  FINER,
-  FINE,
-  CONFIG,
-  INFO,
-  WARNING,
-  SEVERE,
-  SHOUT,
-  OFF,
-}
+enum LogLevel { all, finest, finer, fine, config, info, warning, severe, shout, off }
 
 class LogMessage {
   final String message;
@@ -47,12 +32,7 @@ class LogMessage {
 
   @override
   int get hashCode {
-    return message.hashCode ^
-        level.hashCode ^
-        createdAt.hashCode ^
-        logger.hashCode ^
-        error.hashCode ^
-        stack.hashCode;
+    return message.hashCode ^ level.hashCode ^ createdAt.hashCode ^ logger.hashCode ^ error.hashCode ^ stack.hashCode;
   }
 
   @override

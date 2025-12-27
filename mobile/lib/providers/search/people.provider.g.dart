@@ -6,21 +6,25 @@ part of 'people.provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$getAllPeopleHash() => r'3417b7e0c211382d4480a415e352139995d57b6d';
+String _$getAllPeopleHash() => r'2c5e6a207683f15ab209650615fdf9cb7f76c736';
 
 /// See also [getAllPeople].
 @ProviderFor(getAllPeople)
-final getAllPeopleProvider = AutoDisposeFutureProvider<List<Person>>.internal(
-  getAllPeople,
-  name: r'getAllPeopleProvider',
-  debugGetCreateSourceHash:
-      const bool.fromEnvironment('dart.vm.product') ? null : _$getAllPeopleHash,
-  dependencies: null,
-  allTransitiveDependencies: null,
-);
+final getAllPeopleProvider =
+    AutoDisposeFutureProvider<List<PersonDto>>.internal(
+      getAllPeople,
+      name: r'getAllPeopleProvider',
+      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+          ? null
+          : _$getAllPeopleHash,
+      dependencies: null,
+      allTransitiveDependencies: null,
+    );
 
-typedef GetAllPeopleRef = AutoDisposeFutureProviderRef<List<Person>>;
-String _$personAssetsHash() => r'3dfecb67a54d07e4208bcb9581b2625acd2e1832';
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
+typedef GetAllPeopleRef = AutoDisposeFutureProviderRef<List<PersonDto>>;
+String _$personAssetsHash() => r'c1d35ee0e024bd6915e21bc724be4b458a14bc24';
 
 /// Copied from Dart SDK
 class _SystemHash {
@@ -53,21 +57,15 @@ class PersonAssetsFamily extends Family<AsyncValue<RenderList>> {
   const PersonAssetsFamily();
 
   /// See also [personAssets].
-  PersonAssetsProvider call(
-    String personId,
-  ) {
-    return PersonAssetsProvider(
-      personId,
-    );
+  PersonAssetsProvider call(String personId) {
+    return PersonAssetsProvider(personId);
   }
 
   @override
   PersonAssetsProvider getProviderOverride(
     covariant PersonAssetsProvider provider,
   ) {
-    return call(
-      provider.personId,
-    );
+    return call(provider.personId);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -88,24 +86,19 @@ class PersonAssetsFamily extends Family<AsyncValue<RenderList>> {
 /// See also [personAssets].
 class PersonAssetsProvider extends AutoDisposeFutureProvider<RenderList> {
   /// See also [personAssets].
-  PersonAssetsProvider(
-    String personId,
-  ) : this._internal(
-          (ref) => personAssets(
-            ref as PersonAssetsRef,
-            personId,
-          ),
-          from: personAssetsProvider,
-          name: r'personAssetsProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$personAssetsHash,
-          dependencies: PersonAssetsFamily._dependencies,
-          allTransitiveDependencies:
-              PersonAssetsFamily._allTransitiveDependencies,
-          personId: personId,
-        );
+  PersonAssetsProvider(String personId)
+    : this._internal(
+        (ref) => personAssets(ref as PersonAssetsRef, personId),
+        from: personAssetsProvider,
+        name: r'personAssetsProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$personAssetsHash,
+        dependencies: PersonAssetsFamily._dependencies,
+        allTransitiveDependencies:
+            PersonAssetsFamily._allTransitiveDependencies,
+        personId: personId,
+      );
 
   PersonAssetsProvider._internal(
     super._createNotifier, {
@@ -156,20 +149,23 @@ class PersonAssetsProvider extends AutoDisposeFutureProvider<RenderList> {
   }
 }
 
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
 mixin PersonAssetsRef on AutoDisposeFutureProviderRef<RenderList> {
   /// The parameter `personId` of this provider.
   String get personId;
 }
 
 class _PersonAssetsProviderElement
-    extends AutoDisposeFutureProviderElement<RenderList> with PersonAssetsRef {
+    extends AutoDisposeFutureProviderElement<RenderList>
+    with PersonAssetsRef {
   _PersonAssetsProviderElement(super.provider);
 
   @override
   String get personId => (origin as PersonAssetsProvider).personId;
 }
 
-String _$updatePersonNameHash() => r'7145aaaf6fc38fdafe3a283ebf3d3f4fd0774cd2';
+String _$updatePersonNameHash() => r'45f7693172de522a227406d8198811434cf2bbbc';
 
 /// See also [updatePersonName].
 @ProviderFor(updatePersonName)
@@ -181,24 +177,15 @@ class UpdatePersonNameFamily extends Family<AsyncValue<bool>> {
   const UpdatePersonNameFamily();
 
   /// See also [updatePersonName].
-  UpdatePersonNameProvider call(
-    String personId,
-    String updatedName,
-  ) {
-    return UpdatePersonNameProvider(
-      personId,
-      updatedName,
-    );
+  UpdatePersonNameProvider call(String personId, String updatedName) {
+    return UpdatePersonNameProvider(personId, updatedName);
   }
 
   @override
   UpdatePersonNameProvider getProviderOverride(
     covariant UpdatePersonNameProvider provider,
   ) {
-    return call(
-      provider.personId,
-      provider.updatedName,
-    );
+    return call(provider.personId, provider.updatedName);
   }
 
   static const Iterable<ProviderOrFamily>? _dependencies = null;
@@ -219,27 +206,21 @@ class UpdatePersonNameFamily extends Family<AsyncValue<bool>> {
 /// See also [updatePersonName].
 class UpdatePersonNameProvider extends AutoDisposeFutureProvider<bool> {
   /// See also [updatePersonName].
-  UpdatePersonNameProvider(
-    String personId,
-    String updatedName,
-  ) : this._internal(
-          (ref) => updatePersonName(
-            ref as UpdatePersonNameRef,
-            personId,
-            updatedName,
-          ),
-          from: updatePersonNameProvider,
-          name: r'updatePersonNameProvider',
-          debugGetCreateSourceHash:
-              const bool.fromEnvironment('dart.vm.product')
-                  ? null
-                  : _$updatePersonNameHash,
-          dependencies: UpdatePersonNameFamily._dependencies,
-          allTransitiveDependencies:
-              UpdatePersonNameFamily._allTransitiveDependencies,
-          personId: personId,
-          updatedName: updatedName,
-        );
+  UpdatePersonNameProvider(String personId, String updatedName)
+    : this._internal(
+        (ref) =>
+            updatePersonName(ref as UpdatePersonNameRef, personId, updatedName),
+        from: updatePersonNameProvider,
+        name: r'updatePersonNameProvider',
+        debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+            ? null
+            : _$updatePersonNameHash,
+        dependencies: UpdatePersonNameFamily._dependencies,
+        allTransitiveDependencies:
+            UpdatePersonNameFamily._allTransitiveDependencies,
+        personId: personId,
+        updatedName: updatedName,
+      );
 
   UpdatePersonNameProvider._internal(
     super._createNotifier, {
@@ -296,6 +277,8 @@ class UpdatePersonNameProvider extends AutoDisposeFutureProvider<bool> {
   }
 }
 
+@Deprecated('Will be removed in 3.0. Use Ref instead')
+// ignore: unused_element
 mixin UpdatePersonNameRef on AutoDisposeFutureProviderRef<bool> {
   /// The parameter `personId` of this provider.
   String get personId;
@@ -305,7 +288,8 @@ mixin UpdatePersonNameRef on AutoDisposeFutureProviderRef<bool> {
 }
 
 class _UpdatePersonNameProviderElement
-    extends AutoDisposeFutureProviderElement<bool> with UpdatePersonNameRef {
+    extends AutoDisposeFutureProviderElement<bool>
+    with UpdatePersonNameRef {
   _UpdatePersonNameProviderElement(super.provider);
 
   @override
@@ -313,5 +297,6 @@ class _UpdatePersonNameProviderElement
   @override
   String get updatedName => (origin as UpdatePersonNameProvider).updatedName;
 }
+
 // ignore_for_file: type=lint
-// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member
+// ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

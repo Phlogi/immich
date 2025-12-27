@@ -1,4 +1,8 @@
 <script lang="ts">
+  import SettingSwitch from '$lib/components/shared-components/settings/setting-switch.svelte';
+  import UserAvatar from '$lib/components/shared-components/user-avatar.svelte';
+  import PartnerSelectionModal from '$lib/modals/PartnerSelectionModal.svelte';
+  import { handleError } from '$lib/utils/handle-error';
   import {
     createPartner,
     getPartners,
@@ -8,16 +12,9 @@
     type PartnerResponseDto,
     type UserResponseDto,
   } from '@immich/sdk';
+  import { Button, Icon, IconButton, modalManager } from '@immich/ui';
   import { mdiCheck, mdiClose } from '@mdi/js';
   import { onMount } from 'svelte';
-  import { handleError } from '../../utils/handle-error';
-  import Button from '../elements/buttons/button.svelte';
-  import CircleIconButton from '../elements/buttons/circle-icon-button.svelte';
-  import Icon from '../elements/icon.svelte';
-  import UserAvatar from '$lib/components/shared-components/user-avatar.svelte';
-  import PartnerSelectionModal from './partner-selection-modal.svelte';
-  import SettingSwitch from '$lib/components/shared-components/settings/setting-switch.svelte';
-  import { dialogController } from '$lib/components/shared-components/dialog/dialog';
   import { t } from 'svelte-i18n';
 
   interface PartnerSharing {
@@ -33,8 +30,6 @@
 
   let { user }: Props = $props();
 
-  let createPartnerFlag = $state(false);
-  // let removePartnerDto: PartnerResponseDto | null = null;
   let partners: Array<PartnerSharing> = $state([]);
 
   onMount(async () => {
@@ -82,7 +77,7 @@
   };
 
   const handleRemovePartner = async (partner: PartnerResponseDto) => {
-    const isConfirmed = await dialogController.show({
+    const isConfirmed = await modalManager.showDialog({
       title: $t('stop_photo_sharing'),
       prompt: $t('stop_photo_sharing_description', { values: { partner: partner.name } }),
     });
@@ -99,14 +94,19 @@
     }
   };
 
-  const handleCreatePartners = async (users: UserResponseDto[]) => {
+  const handleCreatePartners = async () => {
+    const users = await modalManager.show(PartnerSelectionModal, { user });
+
+    if (!users) {
+      return;
+    }
+
     try {
       for (const user of users) {
-        await createPartner({ id: user.id });
+        await createPartner({ partnerCreateDto: { sharedWithId: user.id } });
       }
 
       await refreshPartners();
-      createPartnerFlag = false;
     } catch (error) {
       handleError(error, $t('errors.unable_to_add_partners'));
     }
@@ -114,7 +114,7 @@
 
   const handleShowOnTimelineChanged = async (partner: PartnerSharing, inTimeline: boolean) => {
     try {
-      await updatePartner({ id: partner.user.id, updatePartnerDto: { inTimeline } });
+      await updatePartner({ id: partner.user.id, partnerUpdateDto: { inTimeline } });
 
       partner.inTimeline = inTimeline;
     } catch (error) {
@@ -130,7 +130,7 @@
         <div class="flex gap-4 rounded-lg pb-4 transition-all justify-between">
           <div class="flex gap-4">
             <UserAvatar user={partner.user} size="md" />
-            <div class="text-left">
+            <div class="text-start">
               <p class="text-immich-fg dark:text-immich-dark-fg">
                 {partner.user.name}
               </p>
@@ -141,11 +141,14 @@
           </div>
 
           {#if partner.sharedByMe}
-            <CircleIconButton
+            <IconButton
+              shape="round"
+              color="secondary"
+              variant="ghost"
               onclick={() => handleRemovePartner(partner.user)}
               icon={mdiClose}
-              size={'16'}
-              title={$t('stop_sharing_photos_with_user')}
+              size="small"
+              aria-label={$t('stop_sharing_photos_with_user')}
             />
           {/if}
         </div>
@@ -154,17 +157,17 @@
           <!-- I am sharing my assets with this user -->
           {#if partner.sharedByMe}
             <hr class="my-4 border border-gray-200 dark:border-gray-700" />
-            <p class="text-xs font-medium my-4">
-              {$t('shared_with_partner', { values: { partner: partner.user.name } }).toUpperCase()}
+            <p class="uppercase text-xs font-medium my-4">
+              {$t('shared_with_partner', { values: { partner: partner.user.name } })}
             </p>
             <p class="text-md">{$t('partner_can_access', { values: { partner: partner.user.name } })}</p>
             <ul class="text-sm">
               <li class="flex gap-2 place-items-center py-1 mt-2">
-                <Icon path={mdiCheck} />
+                <Icon icon={mdiCheck} />
                 {$t('partner_can_access_assets')}
               </li>
               <li class="flex gap-2 place-items-center py-1">
-                <Icon path={mdiCheck} />
+                <Icon icon={mdiCheck} />
                 {$t('partner_can_access_location')}
               </li>
             </ul>
@@ -173,8 +176,8 @@
           <!-- this user is sharing assets with me -->
           {#if partner.sharedWithMe}
             <hr class="my-4 border border-gray-200 dark:border-gray-700" />
-            <p class="text-xs font-medium my-4">
-              {$t('shared_from_partner', { values: { partner: partner.user.name } }).toUpperCase()}
+            <p class="uppercase text-xs font-medium my-4">
+              {$t('shared_from_partner', { values: { partner: partner.user.name } })}
             </p>
             <SettingSwitch
               title={$t('show_in_timeline')}
@@ -189,10 +192,6 @@
   {/if}
 
   <div class="flex justify-end mt-5">
-    <Button size="sm" onclick={() => (createPartnerFlag = true)}>{$t('add_partner')}</Button>
+    <Button shape="round" size="small" onclick={() => handleCreatePartners()}>{$t('add_partner')}</Button>
   </div>
 </section>
-
-{#if createPartnerFlag}
-  <PartnerSelectionModal {user} onClose={() => (createPartnerFlag = false)} onAddUsers={handleCreatePartners} />
-{/if}

@@ -3,26 +3,28 @@ import { INestApplication } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ClassConstructor } from 'class-transformer';
-import { PostgresJSDialect } from 'kysely-postgres-js';
 import { ClsModule } from 'nestjs-cls';
 import { KyselyModule } from 'nestjs-kysely';
 import { OpenTelemetryModule } from 'nestjs-otel';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import postgres from 'postgres';
 import { format } from 'sql-formatter';
 import { GENERATE_SQL_KEY, GenerateSqlQueries } from 'src/decorators';
-import { entities } from 'src/entities';
 import { repositories } from 'src/repositories';
 import { AccessRepository } from 'src/repositories/access.repository';
 import { ConfigRepository } from 'src/repositories/config.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
+import { MachineLearningRepository } from 'src/repositories/machine-learning.repository';
+import { SyncRepository } from 'src/repositories/sync.repository';
 import { AuthService } from 'src/services/auth.service';
-import { Logger } from 'typeorm';
+import { getKyselyConfig } from 'src/utils/database';
 
-export class SqlLogger implements Logger {
+const handleError = (label: string, error: Error | any) => {
+  console.error(`${label} error: ${error}`);
+};
+
+export class SqlLogger {
   queries: string[] = [];
   errors: Array<{ error: string | Error; query: string }> = [];
 
@@ -38,11 +40,6 @@ export class SqlLogger implements Logger {
   logQueryError(error: string | Error, query: string) {
     this.errors.push({ error, query });
   }
-
-  logQuerySlow() {}
-  logSchemaBuild() {}
-  logMigration() {}
-  log() {}
 }
 
 const reflector = new Reflector();
@@ -61,7 +58,7 @@ class SqlGenerator {
     try {
       await this.setup();
       for (const Repository of repositories) {
-        if (Repository === LoggingRepository) {
+        if (Repository === LoggingRepository || Repository === MachineLearningRepository) {
           continue;
         }
         await this.process(Repository);
@@ -77,13 +74,15 @@ class SqlGenerator {
     await rm(this.options.targetDir, { force: true, recursive: true });
     await mkdir(this.options.targetDir);
 
-    process.env.DB_HOSTNAME = 'localhost';
+    if (!process.env.DB_HOSTNAME) {
+      process.env.DB_HOSTNAME = 'localhost';
+    }
     const { database, cls, otel } = new ConfigRepository().getEnv();
 
     const moduleFixture = await Test.createTestingModule({
       imports: [
         KyselyModule.forRoot({
-          dialect: new PostgresJSDialect({ postgres: postgres(database.config.kysely) }),
+          ...getKyselyConfig(database.config),
           log: (event) => {
             if (event.level === 'query') {
               this.sqlLogger.logQuery(event.query.sql);
@@ -94,13 +93,6 @@ class SqlGenerator {
           },
         }),
         ClsModule.forRoot(cls.config),
-        TypeOrmModule.forRoot({
-          ...database.config.typeorm,
-          entities,
-          logging: ['query'],
-          logger: this.sqlLogger,
-        }),
-        TypeOrmModule.forFeature(entities),
         OpenTelemetryModule.forRoot(otel),
       ],
       providers: [...repositories, AuthService, SchedulerRegistry],
@@ -121,7 +113,7 @@ class SqlGenerator {
     data.push(...(await this.runTargets(instance, `${Repository.name}`)));
 
     // nested repositories
-    if (Repository.name === AccessRepository.name) {
+    if (Repository.name === AccessRepository.name || Repository.name === SyncRepository.name) {
       for (const key of Object.keys(instance)) {
         const subInstance = (instance as any)[key];
         data.push(...(await this.runTargets(subInstance, `${Repository.name}.${key}`)));
@@ -136,7 +128,7 @@ class SqlGenerator {
 
     for (const key of this.getPropertyNames(instance)) {
       const target = instance[key];
-      if (!(target instanceof Function)) {
+      if (!(typeof target === 'function')) {
         continue;
       }
 
@@ -150,7 +142,7 @@ class SqlGenerator {
         queries.push({ params: [] });
       }
 
-      for (const { name, params } of queries) {
+      for (const { name, params, stream } of queries) {
         let queryLabel = `${label}.${key}`;
         if (name) {
           queryLabel += ` (${name})`;
@@ -158,8 +150,19 @@ class SqlGenerator {
 
         this.sqlLogger.clear();
 
-        // errors still generate sql, which is all we care about
-        await target.apply(instance, params).catch((error: Error) => console.error(`${queryLabel} error: ${error}`));
+        if (stream) {
+          try {
+            const result: AsyncIterableIterator<unknown> = target.apply(instance, params);
+            for await (const _ of result) {
+              break;
+            }
+          } catch (error) {
+            handleError(queryLabel, error);
+          }
+        } else {
+          // errors still generate sql, which is all we care about
+          await target.apply(instance, params).catch((error: Error) => handleError(queryLabel, error));
+        }
 
         if (this.sqlLogger.queries.length === 0) {
           console.warn(`No queries recorded for ${queryLabel}`);

@@ -101,6 +101,20 @@ describe('mimeTypes', () => {
     });
   }
 
+  describe('toExtension', () => {
+    it('should get an extension for a png file', () => {
+      expect(mimeTypes.toExtension('image/png')).toEqual('.png');
+    });
+
+    it('should get an extension for a jpeg file', () => {
+      expect(mimeTypes.toExtension('image/jpeg')).toEqual('.jpg');
+    });
+
+    it('should get an extension from a webp file', () => {
+      expect(mimeTypes.toExtension('image/webp')).toEqual('.webp');
+    });
+  });
+
   describe('profile', () => {
     it('should contain only lowercase mime types', () => {
       const keys = Object.keys(mimeTypes.profile);
@@ -134,6 +148,26 @@ describe('mimeTypes', () => {
     for (const [extension, v] of Object.entries(mimeTypes.image)) {
       it(`should lookup ${extension}`, () => {
         expect(mimeTypes.lookup(`test.${extension}`)).toEqual(v[0]);
+      });
+    }
+  });
+
+  describe('animated image', () => {
+    for (const img of ['a.avif', 'a.gif', 'a.webp']) {
+      it('should identify animated image mime types as such', () => {
+        expect(mimeTypes.isPossiblyAnimatedImage(img)).toBeTruthy();
+      });
+    }
+
+    for (const img of ['a.cr3', 'a.jpg', 'a.tiff']) {
+      it('should identify static image mime types as such', () => {
+        expect(mimeTypes.isPossiblyAnimatedImage(img)).toBeFalsy();
+      });
+    }
+
+    for (const extension of Object.keys(mimeTypes.video)) {
+      it('should not identify video mime types as animated', () => {
+        expect(mimeTypes.isPossiblyAnimatedImage(extension)).toBeFalsy();
       });
     }
   });

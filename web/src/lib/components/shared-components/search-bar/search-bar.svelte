@@ -1,104 +1,138 @@
 <script lang="ts">
-  import { AppRoute } from '$lib/constants';
   import { goto } from '$app/navigation';
-  import { isSearchEnabled, preventRaceConditionSearchBar, savedSearchTerms } from '$lib/stores/search.store';
-  import { mdiClose, mdiMagnify, mdiTune } from '@mdi/js';
-  import SearchHistoryBox from './search-history-box.svelte';
-  import SearchFilterModal from './search-filter-modal.svelte';
-  import type { MetadataSearchDto, SmartSearchDto } from '@immich/sdk';
-  import { getMetadataSearchQuery } from '$lib/utils/metadata-search';
-  import { handlePromiseError } from '$lib/utils';
-  import { shortcuts } from '$lib/actions/shortcut';
   import { focusOutside } from '$lib/actions/focus-outside';
-  import CircleIconButton from '$lib/components/elements/buttons/circle-icon-button.svelte';
-  import { t } from 'svelte-i18n';
+  import { shortcuts } from '$lib/actions/shortcut';
+  import { AppRoute } from '$lib/constants';
+  import SearchFilterModal from '$lib/modals/SearchFilterModal.svelte';
+  import { searchStore } from '$lib/stores/search.svelte';
+  import { handlePromiseError } from '$lib/utils';
   import { generateId } from '$lib/utils/generate-id';
-  import { tick } from 'svelte';
+  import { getMetadataSearchQuery } from '$lib/utils/metadata-search';
+  import type { MetadataSearchDto, SmartSearchDto } from '@immich/sdk';
+  import { Button, IconButton, modalManager } from '@immich/ui';
+  import { mdiClose, mdiMagnify, mdiTune } from '@mdi/js';
+  import { onDestroy, onMount, tick } from 'svelte';
+  import { t } from 'svelte-i18n';
+  import SearchHistoryBox from './search-history-box.svelte';
 
   interface Props {
     value?: string;
     grayTheme: boolean;
     searchQuery?: MetadataSearchDto | SmartSearchDto;
-    onSearch?: () => void;
   }
 
-  let { value = $bindable(''), grayTheme, searchQuery = {}, onSearch }: Props = $props();
+  let { value = $bindable(''), grayTheme, searchQuery = {} }: Props = $props();
 
   let showClearIcon = $derived(value.length > 0);
 
   let input = $state<HTMLInputElement>();
   let searchHistoryBox = $state<ReturnType<typeof SearchHistoryBox>>();
   let showSuggestions = $state(false);
-  let showFilter = $state(false);
   let isSearchSuggestions = $state(false);
   let selectedId: string | undefined = $state();
+  let close: (() => Promise<void>) | undefined;
+  let showSearchTypeDropdown = $state(false);
+  let currentSearchType = $state('smart');
 
   const listboxId = generateId();
+  const searchTypeId = generateId();
+
+  onDestroy(() => {
+    searchStore.isSearchEnabled = false;
+  });
 
   const handleSearch = async (payload: SmartSearchDto | MetadataSearchDto) => {
     const params = getMetadataSearchQuery(payload);
 
     closeDropdown();
-    showFilter = false;
-    $isSearchEnabled = false;
+    searchStore.isSearchEnabled = false;
     await goto(`${AppRoute.SEARCH}?${params}`);
-    onSearch?.();
   };
 
   const clearSearchTerm = (searchTerm: string) => {
     input?.focus();
-    $savedSearchTerms = $savedSearchTerms.filter((item) => item !== searchTerm);
+    searchStore.savedSearchTerms = searchStore.savedSearchTerms.filter((item) => item !== searchTerm);
   };
 
   const saveSearchTerm = (saveValue: string) => {
-    const filteredSearchTerms = $savedSearchTerms.filter((item) => item.toLowerCase() !== saveValue.toLowerCase());
-    $savedSearchTerms = [saveValue, ...filteredSearchTerms];
+    const filteredSearchTerms = searchStore.savedSearchTerms.filter(
+      (item) => item.toLowerCase() !== saveValue.toLowerCase(),
+    );
+    searchStore.savedSearchTerms = [saveValue, ...filteredSearchTerms];
 
-    if ($savedSearchTerms.length > 5) {
-      $savedSearchTerms = $savedSearchTerms.slice(0, 5);
+    if (searchStore.savedSearchTerms.length > 5) {
+      searchStore.savedSearchTerms = searchStore.savedSearchTerms.slice(0, 5);
     }
   };
 
   const clearAllSearchTerms = () => {
     input?.focus();
-    $savedSearchTerms = [];
+    searchStore.savedSearchTerms = [];
   };
 
   const onFocusIn = () => {
-    $isSearchEnabled = true;
+    searchStore.isSearchEnabled = true;
+    getSearchType();
   };
 
   const onFocusOut = () => {
-    const focusOutTimer = setTimeout(() => {
-      if ($isSearchEnabled) {
-        $preventRaceConditionSearchBar = true;
+    searchStore.isSearchEnabled = false;
+  };
+
+  const buildSearchPayload = (term: string): SmartSearchDto | MetadataSearchDto => {
+    const searchType = getSearchType();
+    switch (searchType) {
+      case 'smart': {
+        return { query: term };
       }
-
-      closeDropdown();
-      $isSearchEnabled = false;
-      showFilter = false;
-    }, 100);
-
-    clearTimeout(focusOutTimer);
+      case 'metadata': {
+        return { originalFileName: term };
+      }
+      case 'description': {
+        return { description: term };
+      }
+      case 'ocr': {
+        return { ocr: term };
+      }
+      default: {
+        return { query: term };
+      }
+    }
   };
 
   const onHistoryTermClick = async (searchTerm: string) => {
     value = searchTerm;
-    const searchPayload = { query: searchTerm };
-    await handleSearch(searchPayload);
+    await handleSearch(buildSearchPayload(searchTerm));
   };
 
-  const onFilterClick = () => {
-    showFilter = !showFilter;
+  const onFilterClick = async () => {
     value = '';
 
-    if (showFilter) {
-      closeDropdown();
+    if (close) {
+      await close();
+      close = undefined;
+      return;
     }
+
+    const result = modalManager.open(SearchFilterModal, { searchQuery });
+    close = () => result.close();
+    closeDropdown();
+
+    const searchResult = await result.onClose;
+    close = undefined;
+
+    // Refresh search type after modal closes
+    getSearchType();
+
+    if (!searchResult) {
+      return;
+    }
+
+    await handleSearch(searchResult);
   };
 
   const onSubmit = () => {
-    handlePromiseError(handleSearch({ query: value }));
+    handlePromiseError(handleSearch(buildSearchPayload(value)));
     saveSearchTerm(value);
   };
 
@@ -109,7 +143,7 @@
 
   const onEscape = () => {
     closeDropdown();
-    showFilter = false;
+    closeSearchTypeDropdown();
   };
 
   const onArrow = async (direction: 1 | -1) => {
@@ -139,13 +173,75 @@
     searchHistoryBox?.clearSelection();
   };
 
+  const toggleSearchTypeDropdown = () => {
+    showSearchTypeDropdown = !showSearchTypeDropdown;
+  };
+
+  const closeSearchTypeDropdown = () => {
+    showSearchTypeDropdown = false;
+  };
+
+  const selectSearchType = (type: string) => {
+    localStorage.setItem('searchQueryType', type);
+    currentSearchType = type;
+    showSearchTypeDropdown = false;
+  };
+
   const onsubmit = (event: Event) => {
     event.preventDefault();
     onSubmit();
   };
+
+  function getSearchType() {
+    const searchType = localStorage.getItem('searchQueryType');
+    switch (searchType) {
+      case 'smart':
+      case 'metadata':
+      case 'description':
+      case 'ocr': {
+        currentSearchType = searchType;
+        return searchType;
+      }
+      default: {
+        currentSearchType = 'smart';
+        return 'smart';
+      }
+    }
+  }
+
+  function getSearchTypeText(): string {
+    switch (currentSearchType) {
+      case 'smart': {
+        return $t('context');
+      }
+      case 'metadata': {
+        return $t('filename');
+      }
+      case 'description': {
+        return $t('description');
+      }
+      case 'ocr': {
+        return $t('ocr');
+      }
+      default: {
+        return $t('context');
+      }
+    }
+  }
+
+  onMount(() => {
+    getSearchType();
+  });
+
+  const searchTypes = [
+    { value: 'smart', label: () => $t('context') },
+    { value: 'metadata', label: () => $t('filename') },
+    { value: 'description', label: () => $t('description') },
+    { value: 'ocr', label: () => $t('ocr') },
+  ] as const;
 </script>
 
-<svelte:window
+<svelte:document
   use:shortcuts={[
     { shortcut: { key: 'Escape' }, onShortcut: onEscape },
     { shortcut: { ctrl: true, key: 'k' }, onShortcut: () => input?.select() },
@@ -153,7 +249,7 @@
   ]}
 />
 
-<div class="w-full relative" use:focusOutside={{ onFocusOut }} tabindex="-1">
+<div class="w-full relative z-auto" use:focusOutside={{ onFocusOut }} tabindex="-1">
   <form
     draggable="false"
     autocomplete="off"
@@ -170,10 +266,11 @@
         type="text"
         name="q"
         id="main-search-bar"
-        class="w-full transition-all border-2 px-14 py-4 text-immich-fg/75 dark:text-immich-dark-fg
+        class="w-full transition-all border-2 ps-14 py-4 max-md:py-2 text-immich-fg/75 dark:text-immich-dark-fg
+        {showClearIcon ? 'pe-22.5' : 'pe-14'}
         {grayTheme ? 'dark:bg-immich-dark-gray' : 'dark:bg-immich-dark-bg'}
         {showSuggestions && isSearchSuggestions ? 'rounded-t-3xl' : 'rounded-3xl bg-gray-200'}
-        {$isSearchEnabled && !showFilter ? 'border-gray-200 dark:border-gray-700 bg-white' : 'border-transparent'}"
+        {searchStore.isSearchEnabled ? 'border-gray-200 dark:border-gray-700 bg-white' : 'border-transparent'}"
         placeholder={$t('search_your_photos')}
         required
         pattern="^(?!m:$).*$"
@@ -181,12 +278,12 @@
         bind:this={input}
         onfocus={openDropdown}
         oninput={onInput}
-        disabled={showFilter}
         role="combobox"
         aria-controls={listboxId}
         aria-activedescendant={selectedId ?? ''}
         aria-expanded={showSuggestions && isSearchSuggestions}
         aria-autocomplete="list"
+        aria-describedby={searchTypeId}
         use:shortcuts={[
           { shortcut: { key: 'Escape' }, onShortcut: onEscape },
           { shortcut: { ctrl: true, shift: true, key: 'k' }, onShortcut: onFilterClick },
@@ -211,31 +308,80 @@
       />
     </div>
 
-    <div class="absolute inset-y-0 {showClearIcon ? 'right-14' : 'right-2'} flex items-center pl-6 transition-all">
-      <CircleIconButton title={$t('show_search_options')} icon={mdiTune} onclick={onFilterClick} size="20" />
-    </div>
-    {#if showClearIcon}
-      <div class="absolute inset-y-0 right-0 flex items-center pr-2">
-        <CircleIconButton onclick={onClear} icon={mdiClose} title={$t('clear')} size="20" />
+    {#if searchStore.isSearchEnabled}
+      <div
+        id={searchTypeId}
+        class="absolute inset-y-0 flex items-center end-16"
+        class:max-md:hidden={value}
+        class:end-28={value.length > 0}
+      >
+        <div class="relative" use:focusOutside={{ onFocusOut: closeSearchTypeDropdown }}>
+          <Button
+            class="bg-immich-primary text-white dark:bg-immich-dark-primary/90 dark:text-black/75 rounded-full px-3 py-1 text-xs hover:opacity-80 transition-opacity cursor-pointer"
+            onclick={toggleSearchTypeDropdown}
+            aria-expanded={showSearchTypeDropdown}
+            aria-haspopup="listbox"
+          >
+            {getSearchTypeText()}
+          </Button>
+
+          {#if showSearchTypeDropdown}
+            <div
+              class="absolute top-full right-0 mt-1 bg-white dark:bg-immich-dark-gray border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg py-1 min-w-32 z-9999"
+            >
+              {#each searchTypes as searchType (searchType.value)}
+                <button
+                  type="button"
+                  tabindex="0"
+                  class="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+                         {currentSearchType === searchType.value ? 'bg-gray-100 dark:bg-gray-700' : ''}"
+                  onclick={() => selectSearchType(searchType.value)}
+                >
+                  {searchType.label()}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
       </div>
     {/if}
-    <div class="absolute inset-y-0 left-0 flex items-center pl-2">
-      <CircleIconButton
+
+    <div class="absolute inset-y-0 {showClearIcon ? 'end-14' : 'end-2'} flex items-center ps-6 transition-all">
+      <IconButton
+        aria-label={$t('show_search_options')}
+        shape="round"
+        icon={mdiTune}
+        onclick={onFilterClick}
+        size="medium"
+        color="secondary"
+        variant="ghost"
+      />
+    </div>
+
+    {#if showClearIcon}
+      <div class="absolute inset-y-0 end-0 flex items-center pe-2">
+        <IconButton
+          onclick={onClear}
+          icon={mdiClose}
+          aria-label={$t('clear')}
+          size="medium"
+          color="secondary"
+          variant="ghost"
+          shape="round"
+        />
+      </div>
+    {/if}
+    <div class="absolute inset-y-0 start-0 flex items-center ps-2">
+      <IconButton
         type="submit"
-        disabled={showFilter}
-        title={$t('search')}
+        aria-label={$t('search')}
         icon={mdiMagnify}
-        size="20"
+        size="medium"
         onclick={() => {}}
+        shape="round"
+        color="secondary"
+        variant="ghost"
       />
     </div>
   </form>
-
-  {#if showFilter}
-    <SearchFilterModal
-      {searchQuery}
-      onSearch={(payload) => handleSearch(payload)}
-      onClose={() => (showFilter = false)}
-    />
-  {/if}
 </div>

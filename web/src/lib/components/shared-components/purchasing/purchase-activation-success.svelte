@@ -1,11 +1,10 @@
 <script lang="ts">
-  import Button from '$lib/components/elements/buttons/button.svelte';
-  import Icon from '$lib/components/elements/icon.svelte';
-  import { t } from 'svelte-i18n';
-  import { mdiPartyPopper } from '@mdi/js';
   import SettingSwitch from '$lib/components/shared-components/settings/setting-switch.svelte';
   import { preferences } from '$lib/stores/user.store';
   import { setSupportBadgeVisibility } from '$lib/utils/purchase-utils';
+  import { Button, Icon } from '@immich/ui';
+  import { mdiPartyPopper } from '@mdi/js';
+  import { t } from 'svelte-i18n';
 
   interface Props {
     onDone: () => void;
@@ -14,8 +13,8 @@
   let { onDone }: Props = $props();
 </script>
 
-<div class="m-auto w-3/4 text-center flex flex-col place-content-center place-items-center dark:text-white my-6">
-  <Icon path={mdiPartyPopper} class="text-immich-primary dark:text-immich-dark-primary" size="96" />
+<div class="m-auto w-3/4 text-center flex flex-col place-content-center place-items-center my-6">
+  <Icon icon={mdiPartyPopper} class="text-primary" size="96" />
   <p class="text-4xl mt-8 font-bold">{$t('purchase_activated_title')}</p>
   <p class="text-lg mt-6">{$t('purchase_activated_subtitle')}</p>
 
@@ -29,6 +28,6 @@
   </div>
 
   <div class="mt-6 w-full">
-    <Button fullwidth onclick={onDone}>{$t('ok')}</Button>
+    <Button fullWidth shape="round" onclick={onDone}>{$t('ok')}</Button>
   </div>
 </div>

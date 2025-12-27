@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Cron, CronExpression, Interval } from '@nestjs/schedule';
+import { Interval } from '@nestjs/schedule';
 import { NextFunction, Request, Response } from 'express';
 import { readFileSync } from 'node:fs';
 import sanitizeHtml from 'sanitize-html';
@@ -7,12 +7,11 @@ import { ONE_HOUR } from 'src/constants';
 import { ConfigRepository } from 'src/repositories/config.repository';
 import { LoggingRepository } from 'src/repositories/logging.repository';
 import { AuthService } from 'src/services/auth.service';
-import { JobService } from 'src/services/job.service';
 import { SharedLinkService } from 'src/services/shared-link.service';
 import { VersionService } from 'src/services/version.service';
 import { OpenGraphTags } from 'src/utils/misc';
 
-const render = (index: string, meta: OpenGraphTags) => {
+export const render = (index: string, meta: OpenGraphTags) => {
   const [title, description, imageUrl] = [meta.title, meta.description, meta.imageUrl].map((item) =>
     item ? sanitizeHtml(item, { allowedTags: [] }) : '',
   );
@@ -40,7 +39,6 @@ const render = (index: string, meta: OpenGraphTags) => {
 export class ApiService {
   constructor(
     private authService: AuthService,
-    private jobService: JobService,
     private sharedLinkService: SharedLinkService,
     private versionService: VersionService,
     private configRepository: ConfigRepository,
@@ -54,11 +52,6 @@ export class ApiService {
     await this.versionService.handleQueueVersionCheck();
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async onNightlyJob() {
-    await this.jobService.handleNightlyJobs();
-  }
-
   ssr(excludePaths: string[]) {
     const { resourcePaths } = this.configRepository.getEnv();
 
@@ -70,42 +63,49 @@ export class ApiService {
     }
 
     return async (request: Request, res: Response, next: NextFunction) => {
+      const method = request.method.toLowerCase();
       if (
         request.url.startsWith('/api') ||
-        request.method.toLowerCase() !== 'get' ||
+        (method !== 'get' && method !== 'head') ||
         excludePaths.some((item) => request.url.startsWith(item))
       ) {
         return next();
       }
 
-      const targets = [
-        {
-          regex: /^\/share\/(.+)$/,
-          onMatch: async (matches: RegExpMatchArray) => {
-            const key = matches[1];
-            const auth = await this.authService.validateSharedLink(key);
-            return this.sharedLinkService.getMetadataTags(auth);
-          },
-        },
-      ];
-
+      let status = 200;
       let html = index;
 
-      try {
-        for (const { regex, onMatch } of targets) {
-          const matches = request.url.match(regex);
-          if (matches) {
-            const meta = await onMatch(matches);
-            if (meta) {
-              html = render(index, meta);
-            }
+      const defaultDomain = request.host ? `${request.protocol}://${request.host}` : undefined;
 
-            break;
-          }
+      let meta: OpenGraphTags | null = null;
+
+      const shareKey = request.url.match(/^\/share\/(.+)$/);
+      if (shareKey) {
+        try {
+          const key = shareKey[1];
+          const auth = await this.authService.validateSharedLinkKey(key);
+          meta = await this.sharedLinkService.getMetadataTags(auth, defaultDomain);
+        } catch {
+          status = 404;
         }
-      } catch {}
+      }
 
-      res.type('text/html').header('Cache-Control', 'no-store').send(html);
+      const shareSlug = request.url.match(/^\/s\/(.+)$/);
+      if (shareSlug) {
+        try {
+          const slug = shareSlug[1];
+          const auth = await this.authService.validateSharedLinkSlug(slug);
+          meta = await this.sharedLinkService.getMetadataTags(auth, defaultDomain);
+        } catch {
+          status = 404;
+        }
+      }
+
+      if (meta) {
+        html = render(index, meta);
+      }
+
+      res.status(status).type('text/html').header('Cache-Control', 'no-store').send(html);
     };
   }
 }

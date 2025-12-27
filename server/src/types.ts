@@ -1,47 +1,41 @@
+import { SystemConfig } from 'src/config';
+import { VECTOR_EXTENSIONS } from 'src/constants';
+import { Asset, AssetFile } from 'src/database';
+import { UploadFieldName } from 'src/dtos/asset-media.dto';
+import { AuthDto } from 'src/dtos/auth.dto';
 import {
-  DatabaseExtension,
+  AssetOrder,
+  AssetType,
+  DatabaseSslMode,
   ExifOrientation,
   ImageFormat,
   JobName,
+  MemoryType,
+  PluginTriggerType,
   QueueName,
+  StorageFolder,
   SyncEntityType,
+  SystemMetadataKey,
   TranscodeTarget,
+  UserMetadataKey,
   VideoCodec,
 } from 'src/enum';
-import { ActivityRepository } from 'src/repositories/activity.repository';
-import { ApiKeyRepository } from 'src/repositories/api-key.repository';
-import { MemoryRepository } from 'src/repositories/memory.repository';
-import { SessionRepository } from 'src/repositories/session.repository';
 
 export type DeepPartial<T> = T extends object ? { [K in keyof T]?: DeepPartial<T[K]> } : T;
 
 export type RepositoryInterface<T extends object> = Pick<T, keyof T>;
-
-type IActivityRepository = RepositoryInterface<ActivityRepository>;
-type IApiKeyRepository = RepositoryInterface<ApiKeyRepository>;
-type IMemoryRepository = RepositoryInterface<MemoryRepository>;
-type ISessionRepository = RepositoryInterface<SessionRepository>;
-
-export type ActivityItem =
-  | Awaited<ReturnType<IActivityRepository['create']>>
-  | Awaited<ReturnType<IActivityRepository['search']>>[0];
-
-export type ApiKeyItem =
-  | Awaited<ReturnType<IApiKeyRepository['create']>>
-  | NonNullable<Awaited<ReturnType<IApiKeyRepository['getById']>>>
-  | Awaited<ReturnType<IApiKeyRepository['getByUserId']>>[0];
-
-export type MemoryItem =
-  | Awaited<ReturnType<IMemoryRepository['create']>>
-  | Awaited<ReturnType<IMemoryRepository['search']>>[0];
-
-export type SessionItem = Awaited<ReturnType<ISessionRepository['getByUserId']>>[0];
 
 export interface CropOptions {
   top: number;
   left: number;
   width: number;
   height: number;
+}
+
+export interface FullsizeImageOptions {
+  format: ImageFormat;
+  quality: number;
+  enabled: boolean;
 }
 
 export interface ImageOptions {
@@ -64,11 +58,11 @@ interface DecodeImageOptions {
 }
 
 export interface DecodeToBufferOptions extends DecodeImageOptions {
-  size: number;
+  size?: number;
   orientation?: ExifOrientation;
 }
 
-export type GenerateThumbnailOptions = ImageOptions & DecodeImageOptions;
+export type GenerateThumbnailOptions = Pick<ImageOptions, 'format' | 'quality'> & DecodeToBufferOptions;
 
 export type GenerateThumbnailFromBufferOptions = GenerateThumbnailOptions & { raw: RawImageInfo };
 
@@ -95,12 +89,15 @@ export interface VideoStreamInfo {
   isHDR: boolean;
   bitrate: number;
   pixelFormat: string;
+  colorPrimaries?: string;
+  colorSpace?: string;
+  colorTransfer?: string;
 }
 
 export interface AudioStreamInfo {
   index: number;
   codecName?: string;
-  frameCount: number;
+  bitrate: number;
 }
 
 export interface VideoFormat {
@@ -171,10 +168,10 @@ export interface VideoInterfaces {
 
 export type ConcurrentQueueName = Exclude<
   QueueName,
-  | QueueName.STORAGE_TEMPLATE_MIGRATION
-  | QueueName.FACIAL_RECOGNITION
-  | QueueName.DUPLICATE_DETECTION
-  | QueueName.BACKUP_DATABASE
+  | QueueName.StorageTemplateMigration
+  | QueueName.FacialRecognition
+  | QueueName.DuplicateDetection
+  | QueueName.BackupDatabase
 >;
 
 export type Jobs = { [K in JobItem['name']]: (JobItem & { name: K })['data'] };
@@ -189,9 +186,10 @@ export interface IDelayedJob extends IBaseJob {
   delay?: number;
 }
 
+export type JobSource = 'upload' | 'sidecar-write' | 'copy';
 export interface IEntityJob extends IBaseJob {
   id: string;
-  source?: 'upload' | 'sidecar-write' | 'copy';
+  source?: JobSource;
   notify?: boolean;
 }
 
@@ -199,17 +197,23 @@ export interface IAssetDeleteJob extends IEntityJob {
   deleteOnDisk: boolean;
 }
 
-export interface ILibraryFileJob extends IEntityJob {
-  ownerId: string;
-  assetPath: string;
+export interface ILibraryFileJob {
+  libraryId: string;
+  paths: string[];
+  progressCounter?: number;
+  totalAssets?: number;
 }
 
-export interface ILibraryAssetJob extends IEntityJob {
+export interface ILibraryBulkIdsJob {
+  libraryId: string;
   importPaths: string[];
   exclusionPatterns: string[];
+  assetIds: string[];
+  progressCounter: number;
+  totalAssets: number;
 }
 
-export interface IBulkEntityJob extends IBaseJob {
+export interface IBulkEntityJob {
   ids: string[];
 }
 
@@ -218,11 +222,6 @@ export interface IDeleteFilesJob extends IBaseJob {
 }
 
 export interface ISidecarWriteJob extends IEntityJob {
-  description?: string;
-  dateTimeOriginal?: string;
-  latitude?: number;
-  longitude?: number;
-  rating?: number;
   tags?: true;
 }
 
@@ -249,7 +248,7 @@ export interface IEmailJob {
 }
 
 export interface INotifySignupJob extends IEntityJob {
-  tempPassword?: string;
+  password?: string;
 }
 
 export interface INotifyAlbumInviteJob extends IEntityJob {
@@ -257,7 +256,24 @@ export interface INotifyAlbumInviteJob extends IEntityJob {
 }
 
 export interface INotifyAlbumUpdateJob extends IEntityJob, IDelayedJob {
-  recipientIds: string[];
+  recipientId: string;
+}
+
+export interface WorkflowData {
+  [PluginTriggerType.AssetCreate]: {
+    userId: string;
+    asset: Asset;
+  };
+  [PluginTriggerType.PersonRecognized]: {
+    personId: string;
+    assetId: string;
+  };
+}
+
+export interface IWorkflowJob<T extends PluginTriggerType = PluginTriggerType> {
+  id: string;
+  type: T;
+  event: WorkflowData[T];
 }
 
 export interface JobCounts {
@@ -269,105 +285,109 @@ export interface JobCounts {
   paused: number;
 }
 
-export interface QueueStatus {
-  isActive: boolean;
-  isPaused: boolean;
-}
-
 export type JobItem =
+  // Audit
+  | { name: JobName.AuditTableCleanup; data?: IBaseJob }
+
   // Backups
-  | { name: JobName.BACKUP_DATABASE; data?: IBaseJob }
+  | { name: JobName.DatabaseBackup; data?: IBaseJob }
 
   // Transcoding
-  | { name: JobName.QUEUE_VIDEO_CONVERSION; data: IBaseJob }
-  | { name: JobName.VIDEO_CONVERSION; data: IEntityJob }
+  | { name: JobName.AssetEncodeVideoQueueAll; data: IBaseJob }
+  | { name: JobName.AssetEncodeVideo; data: IEntityJob }
 
   // Thumbnails
-  | { name: JobName.QUEUE_GENERATE_THUMBNAILS; data: IBaseJob }
-  | { name: JobName.GENERATE_THUMBNAILS; data: IEntityJob }
+  | { name: JobName.AssetGenerateThumbnailsQueueAll; data: IBaseJob }
+  | { name: JobName.AssetGenerateThumbnails; data: IEntityJob }
 
   // User
-  | { name: JobName.USER_DELETE_CHECK; data?: IBaseJob }
-  | { name: JobName.USER_DELETION; data: IEntityJob }
-  | { name: JobName.USER_SYNC_USAGE; data?: IBaseJob }
+  | { name: JobName.UserDeleteCheck; data?: IBaseJob }
+  | { name: JobName.UserDelete; data: IEntityJob }
+  | { name: JobName.UserSyncUsage; data?: IBaseJob }
 
   // Storage Template
-  | { name: JobName.STORAGE_TEMPLATE_MIGRATION; data?: IBaseJob }
-  | { name: JobName.STORAGE_TEMPLATE_MIGRATION_SINGLE; data: IEntityJob }
+  | { name: JobName.StorageTemplateMigration; data?: IBaseJob }
+  | { name: JobName.StorageTemplateMigrationSingle; data: IEntityJob }
 
   // Migration
-  | { name: JobName.QUEUE_MIGRATION; data?: IBaseJob }
-  | { name: JobName.MIGRATE_ASSET; data: IEntityJob }
-  | { name: JobName.MIGRATE_PERSON; data: IEntityJob }
+  | { name: JobName.FileMigrationQueueAll; data?: IBaseJob }
+  | { name: JobName.AssetFileMigration; data: IEntityJob }
+  | { name: JobName.PersonFileMigration; data: IEntityJob }
 
   // Metadata Extraction
-  | { name: JobName.QUEUE_METADATA_EXTRACTION; data: IBaseJob }
-  | { name: JobName.METADATA_EXTRACTION; data: IEntityJob }
-  | { name: JobName.LINK_LIVE_PHOTOS; data: IEntityJob }
+  | { name: JobName.AssetExtractMetadataQueueAll; data: IBaseJob }
+  | { name: JobName.AssetExtractMetadata; data: IEntityJob }
+
+  // Notifications
+  | { name: JobName.NotificationsCleanup; data?: IBaseJob }
+
   // Sidecar Scanning
-  | { name: JobName.QUEUE_SIDECAR; data: IBaseJob }
-  | { name: JobName.SIDECAR_DISCOVERY; data: IEntityJob }
-  | { name: JobName.SIDECAR_SYNC; data: IEntityJob }
-  | { name: JobName.SIDECAR_WRITE; data: ISidecarWriteJob }
+  | { name: JobName.SidecarQueueAll; data: IBaseJob }
+  | { name: JobName.SidecarCheck; data: IEntityJob }
+  | { name: JobName.SidecarWrite; data: ISidecarWriteJob }
 
   // Facial Recognition
-  | { name: JobName.QUEUE_FACE_DETECTION; data: IBaseJob }
-  | { name: JobName.FACE_DETECTION; data: IEntityJob }
-  | { name: JobName.QUEUE_FACIAL_RECOGNITION; data: INightlyJob }
-  | { name: JobName.FACIAL_RECOGNITION; data: IDeferrableJob }
-  | { name: JobName.GENERATE_PERSON_THUMBNAIL; data: IEntityJob }
+  | { name: JobName.AssetDetectFacesQueueAll; data: IBaseJob }
+  | { name: JobName.AssetDetectFaces; data: IEntityJob }
+  | { name: JobName.FacialRecognitionQueueAll; data: INightlyJob }
+  | { name: JobName.FacialRecognition; data: IDeferrableJob }
+  | { name: JobName.PersonGenerateThumbnail; data: IEntityJob }
 
   // Smart Search
-  | { name: JobName.QUEUE_SMART_SEARCH; data: IBaseJob }
-  | { name: JobName.SMART_SEARCH; data: IEntityJob }
-  | { name: JobName.QUEUE_TRASH_EMPTY; data?: IBaseJob }
+  | { name: JobName.SmartSearchQueueAll; data: IBaseJob }
+  | { name: JobName.SmartSearch; data: IEntityJob }
+  | { name: JobName.AssetEmptyTrash; data?: IBaseJob }
 
   // Duplicate Detection
-  | { name: JobName.QUEUE_DUPLICATE_DETECTION; data: IBaseJob }
-  | { name: JobName.DUPLICATE_DETECTION; data: IEntityJob }
+  | { name: JobName.AssetDetectDuplicatesQueueAll; data: IBaseJob }
+  | { name: JobName.AssetDetectDuplicates; data: IEntityJob }
 
   // Memories
-  | { name: JobName.MEMORIES_CLEANUP; data?: IBaseJob }
-  | { name: JobName.MEMORIES_CREATE; data?: IBaseJob }
+  | { name: JobName.MemoryCleanup; data?: IBaseJob }
+  | { name: JobName.MemoryGenerate; data?: IBaseJob }
 
   // Filesystem
-  | { name: JobName.DELETE_FILES; data: IDeleteFilesJob }
+  | { name: JobName.FileDelete; data: IDeleteFilesJob }
 
   // Cleanup
-  | { name: JobName.CLEAN_OLD_AUDIT_LOGS; data?: IBaseJob }
-  | { name: JobName.CLEAN_OLD_SESSION_TOKENS; data?: IBaseJob }
+  | { name: JobName.AuditLogCleanup; data?: IBaseJob }
+  | { name: JobName.SessionCleanup; data?: IBaseJob }
 
   // Tags
-  | { name: JobName.TAG_CLEANUP; data?: IBaseJob }
+  | { name: JobName.TagCleanup; data?: IBaseJob }
 
   // Asset Deletion
-  | { name: JobName.PERSON_CLEANUP; data?: IBaseJob }
-  | { name: JobName.ASSET_DELETION; data: IAssetDeleteJob }
-  | { name: JobName.ASSET_DELETION_CHECK; data?: IBaseJob }
+  | { name: JobName.PersonCleanup; data?: IBaseJob }
+  | { name: JobName.AssetDelete; data: IAssetDeleteJob }
+  | { name: JobName.AssetDeleteCheck; data?: IBaseJob }
 
   // Library Management
-  | { name: JobName.LIBRARY_SYNC_FILE; data: ILibraryFileJob }
-  | { name: JobName.LIBRARY_QUEUE_SYNC_FILES; data: IEntityJob }
-  | { name: JobName.LIBRARY_QUEUE_SYNC_ASSETS; data: IEntityJob }
-  | { name: JobName.LIBRARY_SYNC_ASSET; data: ILibraryAssetJob }
-  | { name: JobName.LIBRARY_DELETE; data: IEntityJob }
-  | { name: JobName.LIBRARY_QUEUE_SYNC_ALL; data?: IBaseJob }
-  | { name: JobName.LIBRARY_QUEUE_CLEANUP; data: IBaseJob }
+  | { name: JobName.LibrarySyncFiles; data: ILibraryFileJob }
+  | { name: JobName.LibrarySyncFilesQueueAll; data: IEntityJob }
+  | { name: JobName.LibrarySyncAssetsQueueAll; data: IEntityJob }
+  | { name: JobName.LibrarySyncAssets; data: ILibraryBulkIdsJob }
+  | { name: JobName.LibraryRemoveAsset; data: ILibraryFileJob }
+  | { name: JobName.LibraryDelete; data: IEntityJob }
+  | { name: JobName.LibraryScanQueueAll; data?: IBaseJob }
+  | { name: JobName.LibraryDeleteCheck; data: IBaseJob }
 
   // Notification
-  | { name: JobName.SEND_EMAIL; data: IEmailJob }
-  | { name: JobName.NOTIFY_ALBUM_INVITE; data: INotifyAlbumInviteJob }
-  | { name: JobName.NOTIFY_ALBUM_UPDATE; data: INotifyAlbumUpdateJob }
-  | { name: JobName.NOTIFY_SIGNUP; data: INotifySignupJob }
+  | { name: JobName.SendMail; data: IEmailJob }
+  | { name: JobName.NotifyAlbumInvite; data: INotifyAlbumInviteJob }
+  | { name: JobName.NotifyAlbumUpdate; data: INotifyAlbumUpdateJob }
+  | { name: JobName.NotifyUserSignup; data: INotifySignupJob }
 
   // Version check
-  | { name: JobName.VERSION_CHECK; data: IBaseJob }
+  | { name: JobName.VersionCheck; data: IBaseJob }
 
-  // Memories
-  | { name: JobName.MEMORIES_CLEANUP; data?: IBaseJob }
-  | { name: JobName.MEMORIES_CREATE; data?: IBaseJob };
+  // OCR
+  | { name: JobName.OcrQueueAll; data: IBaseJob }
+  | { name: JobName.Ocr; data: IEntityJob }
 
-export type VectorExtension = DatabaseExtension.VECTOR | DatabaseExtension.VECTORS;
+  // Workflow
+  | { name: JobName.WorkflowRun; data: IWorkflowJob };
+
+export type VectorExtension = (typeof VECTOR_EXTENSIONS)[number];
 
 export type DatabaseConnectionURL = {
   connectionType: 'url';
@@ -381,11 +401,13 @@ export type DatabaseConnectionParts = {
   username: string;
   password: string;
   database: string;
+  ssl?: DatabaseSslMode;
 };
 
 export type DatabaseConnectionParams = DatabaseConnectionURL | DatabaseConnectionParts;
 
 export interface ExtensionVersion {
+  name: VectorExtension;
   availableVersion: string | null;
   installedVersion: string | null;
 }
@@ -395,8 +417,8 @@ export interface VectorUpdateResult {
 }
 
 export interface ImmichFile extends Express.Multer.File {
-  /** sha1 hash of file */
   uuid: string;
+  /** sha1 hash of file */
   checksum: Buffer;
 }
 
@@ -407,6 +429,18 @@ export interface UploadFile {
   originalName: string;
   size: number;
 }
+
+export interface UploadBody {
+  filename?: string;
+  [key: string]: unknown;
+}
+
+export type UploadRequest = {
+  auth: AuthDto | null;
+  fieldName: UploadFieldName;
+  file: UploadFile;
+  body: UploadBody;
+};
 
 export interface UploadFiles {
   assetData: ImmichFile[];
@@ -422,4 +456,104 @@ export interface IBulkAsset {
 export type SyncAck = {
   type: SyncEntityType;
   updateId: string;
+  extraId?: string;
 };
+
+export type StorageAsset = {
+  id: string;
+  ownerId: string;
+  livePhotoVideoId: string | null;
+  type: AssetType;
+  isExternal: boolean;
+  checksum: Buffer;
+  timeZone: string | null;
+  fileCreatedAt: Date;
+  originalPath: string;
+  originalFileName: string;
+  fileSizeInByte: number | null;
+  files: AssetFile[];
+};
+
+export type OnThisDayData = { year: number };
+
+export interface MemoryData {
+  [MemoryType.OnThisDay]: OnThisDayData;
+}
+
+export type VersionCheckMetadata = { checkedAt: string; releaseVersion: string };
+export type SystemFlags = { mountChecks: Record<StorageFolder, boolean> };
+export type MaintenanceModeState = { isMaintenanceMode: true; secret: string } | { isMaintenanceMode: false };
+export type MemoriesState = {
+  /** memories have already been created through this date */
+  lastOnThisDayDate: string;
+};
+export type MediaLocation = { location: string };
+
+export interface SystemMetadata extends Record<SystemMetadataKey, Record<string, any>> {
+  [SystemMetadataKey.AdminOnboarding]: { isOnboarded: boolean };
+  [SystemMetadataKey.FacialRecognitionState]: { lastRun?: string };
+  [SystemMetadataKey.License]: { licenseKey: string; activationKey: string; activatedAt: Date };
+  [SystemMetadataKey.MaintenanceMode]: MaintenanceModeState;
+  [SystemMetadataKey.MediaLocation]: MediaLocation;
+  [SystemMetadataKey.ReverseGeocodingState]: { lastUpdate?: string; lastImportFileName?: string };
+  [SystemMetadataKey.SystemConfig]: DeepPartial<SystemConfig>;
+  [SystemMetadataKey.SystemFlags]: DeepPartial<SystemFlags>;
+  [SystemMetadataKey.VersionCheckState]: VersionCheckMetadata;
+  [SystemMetadataKey.MemoriesState]: MemoriesState;
+}
+
+export interface UserPreferences {
+  albums: {
+    defaultAssetOrder: AssetOrder;
+  };
+  folders: {
+    enabled: boolean;
+    sidebarWeb: boolean;
+  };
+  memories: {
+    enabled: boolean;
+    duration: number;
+  };
+  people: {
+    enabled: boolean;
+    sidebarWeb: boolean;
+  };
+  ratings: {
+    enabled: boolean;
+  };
+  sharedLinks: {
+    enabled: boolean;
+    sidebarWeb: boolean;
+  };
+  tags: {
+    enabled: boolean;
+    sidebarWeb: boolean;
+  };
+  emailNotifications: {
+    enabled: boolean;
+    albumInvite: boolean;
+    albumUpdate: boolean;
+  };
+  download: {
+    archiveSize: number;
+    includeEmbeddedVideos: boolean;
+  };
+  purchase: {
+    showSupportBadge: boolean;
+    hideBuyButtonUntil: string;
+  };
+  cast: {
+    gCastEnabled: boolean;
+  };
+}
+
+export type UserMetadataItem<T extends keyof UserMetadata = UserMetadataKey> = {
+  key: T;
+  value: UserMetadata[T];
+};
+
+export interface UserMetadata extends Record<UserMetadataKey, Record<string, any>> {
+  [UserMetadataKey.Preferences]: DeepPartial<UserPreferences>;
+  [UserMetadataKey.License]: { licenseKey: string; activationKey: string; activatedAt: string };
+  [UserMetadataKey.Onboarding]: { isOnboarded: boolean };
+}

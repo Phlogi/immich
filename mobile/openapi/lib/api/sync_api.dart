@@ -16,13 +16,18 @@ class SyncApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'DELETE /sync/ack' operation and returns the [Response].
+  /// Delete acknowledgements
+  ///
+  /// Delete specific synchronization acknowledgments.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [SyncAckDeleteDto] syncAckDeleteDto (required):
   Future<Response> deleteSyncAckWithHttpInfo(SyncAckDeleteDto syncAckDeleteDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/sync/ack';
+    final apiPath = r'/sync/ack';
 
     // ignore: prefer_final_locals
     Object? postBody = syncAckDeleteDto;
@@ -35,7 +40,7 @@ class SyncApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -45,6 +50,10 @@ class SyncApi {
     );
   }
 
+  /// Delete acknowledgements
+  ///
+  /// Delete specific synchronization acknowledgments.
+  ///
   /// Parameters:
   ///
   /// * [SyncAckDeleteDto] syncAckDeleteDto (required):
@@ -55,13 +64,18 @@ class SyncApi {
     }
   }
 
-  /// Performs an HTTP 'POST /sync/delta-sync' operation and returns the [Response].
+  /// Get delta sync for user
+  ///
+  /// Retrieve changed assets since the last sync for the authenticated user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [AssetDeltaSyncDto] assetDeltaSyncDto (required):
   Future<Response> getDeltaSyncWithHttpInfo(AssetDeltaSyncDto assetDeltaSyncDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/sync/delta-sync';
+    final apiPath = r'/sync/delta-sync';
 
     // ignore: prefer_final_locals
     Object? postBody = assetDeltaSyncDto;
@@ -74,7 +88,7 @@ class SyncApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -84,6 +98,10 @@ class SyncApi {
     );
   }
 
+  /// Get delta sync for user
+  ///
+  /// Retrieve changed assets since the last sync for the authenticated user.
+  ///
   /// Parameters:
   ///
   /// * [AssetDeltaSyncDto] assetDeltaSyncDto (required):
@@ -102,13 +120,18 @@ class SyncApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /sync/full-sync' operation and returns the [Response].
+  /// Get full sync for user
+  ///
+  /// Retrieve all assets for a full synchronization for the authenticated user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [AssetFullSyncDto] assetFullSyncDto (required):
   Future<Response> getFullSyncForUserWithHttpInfo(AssetFullSyncDto assetFullSyncDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/sync/full-sync';
+    final apiPath = r'/sync/full-sync';
 
     // ignore: prefer_final_locals
     Object? postBody = assetFullSyncDto;
@@ -121,7 +144,7 @@ class SyncApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -131,6 +154,10 @@ class SyncApi {
     );
   }
 
+  /// Get full sync for user
+  ///
+  /// Retrieve all assets for a full synchronization for the authenticated user.
+  ///
   /// Parameters:
   ///
   /// * [AssetFullSyncDto] assetFullSyncDto (required):
@@ -152,10 +179,14 @@ class SyncApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /sync/ack' operation and returns the [Response].
+  /// Retrieve acknowledgements
+  ///
+  /// Retrieve the synchronization acknowledgments for the current session.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getSyncAckWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/sync/ack';
+    final apiPath = r'/sync/ack';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -168,7 +199,7 @@ class SyncApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -178,6 +209,9 @@ class SyncApi {
     );
   }
 
+  /// Retrieve acknowledgements
+  ///
+  /// Retrieve the synchronization acknowledgments for the current session.
   Future<List<SyncAckDto>?> getSyncAck() async {
     final response = await getSyncAckWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -196,13 +230,18 @@ class SyncApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /sync/stream' operation and returns the [Response].
+  /// Stream sync changes
+  ///
+  /// Retrieve a JSON lines streamed response of changes for synchronization. This endpoint is used by the mobile app to efficiently stay up to date with changes.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [SyncStreamDto] syncStreamDto (required):
   Future<Response> getSyncStreamWithHttpInfo(SyncStreamDto syncStreamDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/sync/stream';
+    final apiPath = r'/sync/stream';
 
     // ignore: prefer_final_locals
     Object? postBody = syncStreamDto;
@@ -215,7 +254,7 @@ class SyncApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -225,6 +264,10 @@ class SyncApi {
     );
   }
 
+  /// Stream sync changes
+  ///
+  /// Retrieve a JSON lines streamed response of changes for synchronization. This endpoint is used by the mobile app to efficiently stay up to date with changes.
+  ///
   /// Parameters:
   ///
   /// * [SyncStreamDto] syncStreamDto (required):
@@ -235,13 +278,18 @@ class SyncApi {
     }
   }
 
-  /// Performs an HTTP 'POST /sync/ack' operation and returns the [Response].
+  /// Acknowledge changes
+  ///
+  /// Send a list of synchronization acknowledgements to confirm that the latest changes have been received.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [SyncAckSetDto] syncAckSetDto (required):
   Future<Response> sendSyncAckWithHttpInfo(SyncAckSetDto syncAckSetDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/sync/ack';
+    final apiPath = r'/sync/ack';
 
     // ignore: prefer_final_locals
     Object? postBody = syncAckSetDto;
@@ -254,7 +302,7 @@ class SyncApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -264,6 +312,10 @@ class SyncApi {
     );
   }
 
+  /// Acknowledge changes
+  ///
+  /// Send a list of synchronization acknowledgements to confirm that the latest changes have been received.
+  ///
   /// Parameters:
   ///
   /// * [SyncAckSetDto] syncAckSetDto (required):

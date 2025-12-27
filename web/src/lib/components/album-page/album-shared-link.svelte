@@ -1,5 +1,6 @@
 <script lang="ts">
-  import SharedLinkCopy from '$lib/components/sharedlinks-page/actions/shared-link-copy.svelte';
+  import ActionButton from '$lib/components/ActionButton.svelte';
+  import { getSharedLinkActions } from '$lib/services/shared-link.service';
   import { locale } from '$lib/stores/preferences.store';
   import type { AlbumResponseDto, SharedLinkResponseDto } from '@immich/sdk';
   import { Text } from '@immich/ui';
@@ -30,6 +31,8 @@
     ]
       .filter(Boolean)
       .join(' • ');
+
+  const { ViewQrCode, Copy } = $derived(getSharedLinkActions($t, sharedLink));
 </script>
 
 <div class="flex justify-between items-center">
@@ -37,5 +40,8 @@
     <Text size="small">{sharedLink.description || album.albumName}</Text>
     <Text size="tiny" color="muted">{getShareProperties()}</Text>
   </div>
-  <SharedLinkCopy link={sharedLink} />
+  <div class="flex">
+    <ActionButton action={ViewQrCode} />
+    <ActionButton action={Copy} />
+  </div>
 </div>

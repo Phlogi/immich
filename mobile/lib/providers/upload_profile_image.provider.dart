@@ -1,31 +1,20 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:immich_mobile/domain/services/user.service.dart';
+import 'package:immich_mobile/providers/infrastructure/user.provider.dart';
+import 'package:immich_mobile/utils/debug_print.dart';
 
-import 'package:immich_mobile/services/user.service.dart';
-
-enum UploadProfileStatus {
-  idle,
-  loading,
-  success,
-  failure,
-}
+enum UploadProfileStatus { idle, loading, success, failure }
 
 class UploadProfileImageState {
   // enum
   final UploadProfileStatus status;
   final String profileImagePath;
-  UploadProfileImageState({
-    required this.status,
-    required this.profileImagePath,
-  });
+  const UploadProfileImageState({required this.status, required this.profileImagePath});
 
-  UploadProfileImageState copyWith({
-    UploadProfileStatus? status,
-    String? profileImagePath,
-  }) {
+  UploadProfileImageState copyWith({UploadProfileStatus? status, String? profileImagePath}) {
     return UploadProfileImageState(
       status: status ?? this.status,
       profileImagePath: profileImagePath ?? this.profileImagePath,
@@ -50,49 +39,36 @@ class UploadProfileImageState {
 
   String toJson() => json.encode(toMap());
 
-  factory UploadProfileImageState.fromJson(String source) =>
-      UploadProfileImageState.fromMap(json.decode(source));
+  factory UploadProfileImageState.fromJson(String source) => UploadProfileImageState.fromMap(json.decode(source));
 
   @override
-  String toString() =>
-      'UploadProfileImageState(status: $status, profileImagePath: $profileImagePath)';
+  String toString() => 'UploadProfileImageState(status: $status, profileImagePath: $profileImagePath)';
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
 
-    return other is UploadProfileImageState &&
-        other.status == status &&
-        other.profileImagePath == profileImagePath;
+    return other is UploadProfileImageState && other.status == status && other.profileImagePath == profileImagePath;
   }
 
   @override
   int get hashCode => status.hashCode ^ profileImagePath.hashCode;
 }
 
-class UploadProfileImageNotifier
-    extends StateNotifier<UploadProfileImageState> {
-  UploadProfileImageNotifier(this._userSErvice)
-      : super(
-          UploadProfileImageState(
-            profileImagePath: '',
-            status: UploadProfileStatus.idle,
-          ),
-        );
+class UploadProfileImageNotifier extends StateNotifier<UploadProfileImageState> {
+  UploadProfileImageNotifier(this._userService)
+    : super(const UploadProfileImageState(profileImagePath: '', status: UploadProfileStatus.idle));
 
-  final UserService _userSErvice;
+  final UserService _userService;
 
   Future<bool> upload(XFile file) async {
     state = state.copyWith(status: UploadProfileStatus.loading);
 
-    var res = await _userSErvice.uploadProfileImage(file);
+    var profileImagePath = await _userService.createProfileImage(file.name, await file.readAsBytes());
 
-    if (res != null) {
-      debugPrint("Successfully upload profile image");
-      state = state.copyWith(
-        status: UploadProfileStatus.success,
-        profileImagePath: res.profileImagePath,
-      );
+    if (profileImagePath != null) {
+      dPrint(() => "Successfully upload profile image");
+      state = state.copyWith(status: UploadProfileStatus.success, profileImagePath: profileImagePath);
       return true;
     }
 
@@ -101,7 +77,6 @@ class UploadProfileImageNotifier
   }
 }
 
-final uploadProfileImageProvider =
-    StateNotifierProvider<UploadProfileImageNotifier, UploadProfileImageState>(
+final uploadProfileImageProvider = StateNotifierProvider<UploadProfileImageNotifier, UploadProfileImageState>(
   ((ref) => UploadProfileImageNotifier(ref.watch(userServiceProvider))),
 );

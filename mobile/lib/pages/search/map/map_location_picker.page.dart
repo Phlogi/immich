@@ -8,23 +8,20 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/extensions/asyncvalue_extensions.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
 import 'package:immich_mobile/extensions/maplibrecontroller_extensions.dart';
+import 'package:immich_mobile/utils/map_utils.dart';
 import 'package:immich_mobile/widgets/map/map_theme_override.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
-import 'package:immich_mobile/utils/map_utils.dart';
 
 @RoutePage()
 class MapLocationPickerPage extends HookConsumerWidget {
   final LatLng initialLatLng;
 
-  const MapLocationPickerPage({
-    super.key,
-    this.initialLatLng = const LatLng(0, 0),
-  });
+  const MapLocationPickerPage({super.key, this.initialLatLng = const LatLng(0, 0)});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedLatLng = useValueNotifier<LatLng>(initialLatLng);
-    final controller = useRef<MaplibreMapController?>(null);
+    final controller = useRef<MapLibreMapController?>(null);
     final marker = useRef<Symbol?>(null);
 
     Future<void> onStyleLoaded() async {
@@ -33,10 +30,9 @@ class MapLocationPickerPage extends HookConsumerWidget {
 
     Future<void> onMapClick(Point<num> point, LatLng centre) async {
       selectedLatLng.value = centre;
-      controller.value?.animateCamera(CameraUpdate.newLatLng(centre));
+      await controller.value?.animateCamera(CameraUpdate.newLatLng(centre));
       if (marker.value != null) {
-        await controller.value
-            ?.updateSymbol(marker.value!, SymbolOptions(geometry: centre));
+        await controller.value?.updateSymbol(marker.value!, SymbolOptions(geometry: centre));
       }
     }
 
@@ -45,17 +41,15 @@ class MapLocationPickerPage extends HookConsumerWidget {
     }
 
     Future<void> getCurrentLocation() async {
-      var (currentLocation, _) =
-          await MapUtils.checkPermAndGetLocation(context);
+      var (currentLocation, _) = await MapUtils.checkPermAndGetLocation(context: context);
 
       if (currentLocation == null) {
         return;
       }
 
-      var currentLatLng =
-          LatLng(currentLocation.latitude, currentLocation.longitude);
+      var currentLatLng = LatLng(currentLocation.latitude, currentLocation.longitude);
       selectedLatLng.value = currentLatLng;
-      controller.value?.animateCamera(CameraUpdate.newLatLng(currentLatLng));
+      await controller.value?.animateCamera(CameraUpdate.newLatLngZoom(currentLatLng, 12));
     }
 
     return MapThemeOverride(
@@ -69,17 +63,15 @@ class MapLocationPickerPage extends HookConsumerWidget {
             onData: (style) => Container(
               clipBehavior: Clip.antiAliasWithSaveLayer,
               decoration: const BoxDecoration(
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(40),
-                  bottomRight: Radius.circular(40),
-                ),
+                borderRadius: BorderRadius.only(bottomLeft: Radius.circular(40), bottomRight: Radius.circular(40)),
               ),
-              child: MaplibreMap(
-                initialCameraPosition:
-                    CameraPosition(target: initialLatLng, zoom: 12),
+              child: MapLibreMap(
+                initialCameraPosition: CameraPosition(
+                  target: initialLatLng,
+                  zoom: (initialLatLng.latitude == 0 && initialLatLng.longitude == 0) ? 1 : 12,
+                ),
                 styleString: style,
-                onMapCreated: (mapController) =>
-                    controller.value = mapController,
+                onMapCreated: (mapController) => controller.value = mapController,
                 onStyleLoadedCallback: onStyleLoaded,
                 onMapClick: onMapClick,
                 dragEnabled: false,
@@ -113,9 +105,7 @@ class _AppBar extends StatelessWidget implements PreferredSizeWidget {
         alignment: Alignment.centerLeft,
         child: ElevatedButton(
           onPressed: onClose,
-          style: ElevatedButton.styleFrom(
-            shape: const CircleBorder(),
-          ),
+          style: ElevatedButton.styleFrom(shape: const CircleBorder()),
           child: const Icon(Icons.arrow_back_ios_new_rounded),
         ),
       ),
@@ -131,11 +121,7 @@ class _BottomBar extends StatelessWidget {
   final Function() onUseLocation;
   final Function() onGetCurrentLocation;
 
-  const _BottomBar({
-    required this.selectedLatLng,
-    required this.onUseLocation,
-    required this.onGetCurrentLocation,
-  });
+  const _BottomBar({required this.selectedLatLng, required this.onUseLocation, required this.onGetCurrentLocation});
 
   @override
   Widget build(BuildContext context) {
@@ -154,9 +140,8 @@ class _BottomBar extends StatelessWidget {
                 const SizedBox(width: 15),
                 ValueListenableBuilder(
                   valueListenable: selectedLatLng,
-                  builder: (_, value, __) => Text(
-                    "${value.latitude.toStringAsFixed(4)}, ${value.longitude.toStringAsFixed(4)}",
-                  ),
+                  builder: (_, value, __) =>
+                      Text("${value.latitude.toStringAsFixed(4)}, ${value.longitude.toStringAsFixed(4)}"),
                 ),
               ],
             ),
@@ -165,13 +150,9 @@ class _BottomBar extends StatelessWidget {
               children: [
                 ElevatedButton(
                   onPressed: onUseLocation,
-                  child:
-                      const Text("map_location_picker_page_use_location").tr(),
+                  child: const Text("map_location_picker_page_use_location").tr(),
                 ),
-                ElevatedButton(
-                  onPressed: onGetCurrentLocation,
-                  child: const Icon(Icons.my_location),
-                ),
+                ElevatedButton(onPressed: onGetCurrentLocation, child: const Icon(Icons.my_location)),
               ],
             ),
           ],

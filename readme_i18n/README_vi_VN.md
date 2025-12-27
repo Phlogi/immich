@@ -29,7 +29,8 @@
 <a href="README_de_DE.md">Deutsch</a>
 <a href="README_nl_NL.md">Nederlands</a>
 <a href="README_tr_TR.md">Türkçe</a>
-<a href="README_zh_CN.md">中文</a>
+<a href="README_zh_CN.md">简体中文</a>
+<a href="README_zh_TW.md">正體中文</a>
 <a href="README_uk_UA.md">Українська</a>
 <a href="README_ru_RU.md">Русский</a>
 <a href="README_pt_BR.md">Português Brasileiro</a>
@@ -52,20 +53,18 @@
 
 ## Liên kết
 
-- [Tài liệu](https://immich.app/docs)
-- [Giới thiệu](https://immich.app/docs/overview/introduction)
-- [Cài đặt](https://immich.app/docs/install/requirements)
+- [Tài liệu](https://docs.immich.app)
+- [Giới thiệu](https://docs.immich.app/overview/introduction)
+- [Cài đặt](https://docs.immich.app/install/requirements)
 - [Lộ trình](https://immich.app/roadmap)
 - [Demo](#demo)
 - [Tính năng](#Tính-năng)
-- [Dịch thuật](https://immich.app/docs/developer/translations)
-- [Đóng góp](https://immich.app/docs/overview/support-the-project)
+- [Dịch thuật](https://docs.immich.app/developer/translations)
+- [Đóng góp](https://docs.immich.app/overview/support-the-project)
 
 ## Demo
 
-Truy cập bản demo [tại đây](https://demo.immich.app). Bản demo đang chạy trên máy ảo Oracle Free-tier ở Amsterdam với CPU ARM64 lõi tứ 2,4 GHz và RAM 24 GB.
-
-Đối với ứng dụng di động, bạn có thể sử dụng `https://demo.immich.app/api` cho `Server Endpoint URL`
+Truy cập bản demo [tại đây](https://demo.immich.app). Đối với ứng dụng di động, bạn có thể sử dụng `https://demo.immich.app` cho `Server Endpoint URL`
 
 ### Thông tin đăng nhập
 
@@ -108,7 +107,7 @@ Truy cập bản demo [tại đây](https://demo.immich.app). Bản demo đang c
 
 ## Dịch thuật
 
-Đọc thêm về dịch thuật [tại đây](https://immich.app/docs/developer/translations).
+Đọc thêm về dịch thuật [tại đây](https://docs.immich.app/developer/translations).
 
 <a href="https://hosted.weblate.org/engage/immich/">
 <img src="https://hosted.weblate.org/widget/immich/immich/multi-auto.svg" alt="Tình trạng dịch thuật" />

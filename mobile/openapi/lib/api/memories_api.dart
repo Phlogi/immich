@@ -16,7 +16,12 @@ class MemoriesApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'PUT /memories/{id}/assets' operation and returns the [Response].
+  /// Add assets to a memory
+  ///
+  /// Add a list of asset IDs to a specific memory.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -24,7 +29,7 @@ class MemoriesApi {
   /// * [BulkIdsDto] bulkIdsDto (required):
   Future<Response> addMemoryAssetsWithHttpInfo(String id, BulkIdsDto bulkIdsDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories/{id}/assets'
+    final apiPath = r'/memories/{id}/assets'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -38,7 +43,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -48,6 +53,10 @@ class MemoriesApi {
     );
   }
 
+  /// Add assets to a memory
+  ///
+  /// Add a list of asset IDs to a specific memory.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -71,13 +80,18 @@ class MemoriesApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /memories' operation and returns the [Response].
+  /// Create a memory
+  ///
+  /// Create a new memory by providing a name, description, and a list of asset IDs to include in the memory.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [MemoryCreateDto] memoryCreateDto (required):
   Future<Response> createMemoryWithHttpInfo(MemoryCreateDto memoryCreateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories';
+    final apiPath = r'/memories';
 
     // ignore: prefer_final_locals
     Object? postBody = memoryCreateDto;
@@ -90,7 +104,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -100,6 +114,10 @@ class MemoriesApi {
     );
   }
 
+  /// Create a memory
+  ///
+  /// Create a new memory by providing a name, description, and a list of asset IDs to include in the memory.
+  ///
   /// Parameters:
   ///
   /// * [MemoryCreateDto] memoryCreateDto (required):
@@ -118,13 +136,18 @@ class MemoriesApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /memories/{id}' operation and returns the [Response].
+  /// Delete a memory
+  ///
+  /// Delete a specific memory by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> deleteMemoryWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories/{id}'
+    final apiPath = r'/memories/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -138,7 +161,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -148,6 +171,10 @@ class MemoriesApi {
     );
   }
 
+  /// Delete a memory
+  ///
+  /// Delete a specific memory by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -158,13 +185,18 @@ class MemoriesApi {
     }
   }
 
-  /// Performs an HTTP 'GET /memories/{id}' operation and returns the [Response].
+  /// Retrieve a memory
+  ///
+  /// Retrieve a specific memory by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> getMemoryWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories/{id}'
+    final apiPath = r'/memories/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -178,7 +210,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -188,6 +220,10 @@ class MemoriesApi {
     );
   }
 
+  /// Retrieve a memory
+  ///
+  /// Retrieve a specific memory by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -206,7 +242,109 @@ class MemoriesApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /memories/{id}/assets' operation and returns the [Response].
+  /// Retrieve memories statistics
+  ///
+  /// Retrieve statistics about memories, such as total count and other relevant metrics.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [DateTime] for_:
+  ///
+  /// * [bool] isSaved:
+  ///
+  /// * [bool] isTrashed:
+  ///
+  /// * [MemorySearchOrder] order:
+  ///
+  /// * [int] size:
+  ///   Number of memories to return
+  ///
+  /// * [MemoryType] type:
+  Future<Response> memoriesStatisticsWithHttpInfo({ DateTime? for_, bool? isSaved, bool? isTrashed, MemorySearchOrder? order, int? size, MemoryType? type, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/memories/statistics';
+
+    // ignore: prefer_final_locals
+    Object? postBody;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    if (for_ != null) {
+      queryParams.addAll(_queryParams('', 'for', for_));
+    }
+    if (isSaved != null) {
+      queryParams.addAll(_queryParams('', 'isSaved', isSaved));
+    }
+    if (isTrashed != null) {
+      queryParams.addAll(_queryParams('', 'isTrashed', isTrashed));
+    }
+    if (order != null) {
+      queryParams.addAll(_queryParams('', 'order', order));
+    }
+    if (size != null) {
+      queryParams.addAll(_queryParams('', 'size', size));
+    }
+    if (type != null) {
+      queryParams.addAll(_queryParams('', 'type', type));
+    }
+
+    const contentTypes = <String>[];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'GET',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+    );
+  }
+
+  /// Retrieve memories statistics
+  ///
+  /// Retrieve statistics about memories, such as total count and other relevant metrics.
+  ///
+  /// Parameters:
+  ///
+  /// * [DateTime] for_:
+  ///
+  /// * [bool] isSaved:
+  ///
+  /// * [bool] isTrashed:
+  ///
+  /// * [MemorySearchOrder] order:
+  ///
+  /// * [int] size:
+  ///   Number of memories to return
+  ///
+  /// * [MemoryType] type:
+  Future<MemoryStatisticsResponseDto?> memoriesStatistics({ DateTime? for_, bool? isSaved, bool? isTrashed, MemorySearchOrder? order, int? size, MemoryType? type, }) async {
+    final response = await memoriesStatisticsWithHttpInfo( for_: for_, isSaved: isSaved, isTrashed: isTrashed, order: order, size: size, type: type, );
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'MemoryStatisticsResponseDto',) as MemoryStatisticsResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Remove assets from a memory
+  ///
+  /// Remove a list of asset IDs from a specific memory.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -214,7 +352,7 @@ class MemoriesApi {
   /// * [BulkIdsDto] bulkIdsDto (required):
   Future<Response> removeMemoryAssetsWithHttpInfo(String id, BulkIdsDto bulkIdsDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories/{id}/assets'
+    final apiPath = r'/memories/{id}/assets'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -228,7 +366,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -238,6 +376,10 @@ class MemoriesApi {
     );
   }
 
+  /// Remove assets from a memory
+  ///
+  /// Remove a list of asset IDs from a specific memory.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -261,7 +403,12 @@ class MemoriesApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /memories' operation and returns the [Response].
+  /// Retrieve memories
+  ///
+  /// Retrieve a list of memories. Memories are sorted descending by creation date by default, although they can also be sorted in ascending order, or randomly.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [DateTime] for_:
@@ -270,10 +417,15 @@ class MemoriesApi {
   ///
   /// * [bool] isTrashed:
   ///
+  /// * [MemorySearchOrder] order:
+  ///
+  /// * [int] size:
+  ///   Number of memories to return
+  ///
   /// * [MemoryType] type:
-  Future<Response> searchMemoriesWithHttpInfo({ DateTime? for_, bool? isSaved, bool? isTrashed, MemoryType? type, }) async {
+  Future<Response> searchMemoriesWithHttpInfo({ DateTime? for_, bool? isSaved, bool? isTrashed, MemorySearchOrder? order, int? size, MemoryType? type, }) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories';
+    final apiPath = r'/memories';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -291,6 +443,12 @@ class MemoriesApi {
     if (isTrashed != null) {
       queryParams.addAll(_queryParams('', 'isTrashed', isTrashed));
     }
+    if (order != null) {
+      queryParams.addAll(_queryParams('', 'order', order));
+    }
+    if (size != null) {
+      queryParams.addAll(_queryParams('', 'size', size));
+    }
     if (type != null) {
       queryParams.addAll(_queryParams('', 'type', type));
     }
@@ -299,7 +457,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -309,6 +467,10 @@ class MemoriesApi {
     );
   }
 
+  /// Retrieve memories
+  ///
+  /// Retrieve a list of memories. Memories are sorted descending by creation date by default, although they can also be sorted in ascending order, or randomly.
+  ///
   /// Parameters:
   ///
   /// * [DateTime] for_:
@@ -317,9 +479,14 @@ class MemoriesApi {
   ///
   /// * [bool] isTrashed:
   ///
+  /// * [MemorySearchOrder] order:
+  ///
+  /// * [int] size:
+  ///   Number of memories to return
+  ///
   /// * [MemoryType] type:
-  Future<List<MemoryResponseDto>?> searchMemories({ DateTime? for_, bool? isSaved, bool? isTrashed, MemoryType? type, }) async {
-    final response = await searchMemoriesWithHttpInfo( for_: for_, isSaved: isSaved, isTrashed: isTrashed, type: type, );
+  Future<List<MemoryResponseDto>?> searchMemories({ DateTime? for_, bool? isSaved, bool? isTrashed, MemorySearchOrder? order, int? size, MemoryType? type, }) async {
+    final response = await searchMemoriesWithHttpInfo( for_: for_, isSaved: isSaved, isTrashed: isTrashed, order: order, size: size, type: type, );
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -336,7 +503,12 @@ class MemoriesApi {
     return null;
   }
 
-  /// Performs an HTTP 'PUT /memories/{id}' operation and returns the [Response].
+  /// Update a memory
+  ///
+  /// Update an existing memory by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -344,7 +516,7 @@ class MemoriesApi {
   /// * [MemoryUpdateDto] memoryUpdateDto (required):
   Future<Response> updateMemoryWithHttpInfo(String id, MemoryUpdateDto memoryUpdateDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/memories/{id}'
+    final apiPath = r'/memories/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -358,7 +530,7 @@ class MemoriesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -368,6 +540,10 @@ class MemoriesApi {
     );
   }
 
+  /// Update a memory
+  ///
+  /// Update an existing memory by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):

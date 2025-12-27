@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:immich_mobile/models/map/map_marker.model.dart';
 import 'package:immich_mobile/widgets/common/confirm_dialog.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:logging/logging.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 class MapUtils {
-  MapUtils._();
+  const MapUtils._();
 
   static final Logger _log = Logger("MapUtils");
   static const defaultSourceId = 'asset-map-markers';
@@ -48,39 +50,34 @@ class MapUtils {
   );
 
   static Map<String, dynamic> _addFeature(MapMarker marker) => {
-        'type': 'Feature',
-        'id': marker.assetRemoteId,
-        'geometry': {
-          'type': 'Point',
-          'coordinates': [marker.latLng.longitude, marker.latLng.latitude],
-        },
-      };
+    'type': 'Feature',
+    'id': marker.assetRemoteId,
+    'geometry': {
+      'type': 'Point',
+      'coordinates': [marker.latLng.longitude, marker.latLng.latitude],
+    },
+  };
 
-  static Map<String, dynamic> generateGeoJsonForMarkers(
-    List<MapMarker> markers,
-  ) =>
-      {
-        'type': 'FeatureCollection',
-        'features': markers.map(_addFeature).toList(),
-      };
+  static Map<String, dynamic> generateGeoJsonForMarkers(List<MapMarker> markers) => {
+    'type': 'FeatureCollection',
+    'features': markers.map(_addFeature).toList(),
+  };
 
-  static Future<(Position?, LocationPermission?)> checkPermAndGetLocation(
-    BuildContext context,
-  ) async {
+  static Future<(Position?, LocationPermission?)> checkPermAndGetLocation({
+    required BuildContext context,
+    bool silent = false,
+  }) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        showDialog(
-          context: context,
-          builder: (context) => _LocationServiceDisabledDialog(),
-        );
+      if (!serviceEnabled && !silent) {
+        unawaited(showDialog(context: context, builder: (context) => _LocationServiceDisabledDialog()));
         return (null, LocationPermission.deniedForever);
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       bool shouldRequestPermission = false;
 
-      if (permission == LocationPermission.denied) {
+      if (permission == LocationPermission.denied && !silent) {
         shouldRequestPermission = await showDialog(
           context: context,
           builder: (context) => _LocationPermissionDisabledDialog(),
@@ -90,19 +87,20 @@ class MapUtils {
         }
       }
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
         // Open app settings only if you did not request for permission before
-        if (permission == LocationPermission.deniedForever &&
-            !shouldRequestPermission) {
+        if (permission == LocationPermission.deniedForever && !shouldRequestPermission && !silent) {
           await Geolocator.openAppSettings();
         }
         return (null, LocationPermission.deniedForever);
       }
 
       Position currentUserLocation = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.medium,
-        timeLimit: const Duration(seconds: 5),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 0,
+          timeLimit: Duration(seconds: 5),
+        ),
       );
       return (currentUserLocation, null);
     } catch (error, stack) {
@@ -114,24 +112,24 @@ class MapUtils {
 
 class _LocationServiceDisabledDialog extends ConfirmDialog {
   _LocationServiceDisabledDialog()
-      : super(
-          title: 'map_location_service_disabled_title'.tr(),
-          content: 'map_location_service_disabled_content'.tr(),
-          cancel: 'map_location_dialog_cancel'.tr(),
-          ok: 'map_location_dialog_yes'.tr(),
-          onOk: () async {
-            await Geolocator.openLocationSettings();
-          },
-        );
+    : super(
+        title: 'map_location_service_disabled_title'.tr(),
+        content: 'map_location_service_disabled_content'.tr(),
+        cancel: 'cancel'.tr(),
+        ok: 'yes'.tr(),
+        onOk: () async {
+          await Geolocator.openLocationSettings();
+        },
+      );
 }
 
 class _LocationPermissionDisabledDialog extends ConfirmDialog {
   _LocationPermissionDisabledDialog()
-      : super(
-          title: 'map_no_location_permission_title'.tr(),
-          content: 'map_no_location_permission_content'.tr(),
-          cancel: 'map_location_dialog_cancel'.tr(),
-          ok: 'map_location_dialog_yes'.tr(),
-          onOk: () {},
-        );
+    : super(
+        title: 'map_no_location_permission_title'.tr(),
+        content: 'map_no_location_permission_content'.tr(),
+        cancel: 'cancel'.tr(),
+        ok: 'yes'.tr(),
+        onOk: () {},
+      );
 }

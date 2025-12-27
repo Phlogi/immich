@@ -1,19 +1,14 @@
-FROM node:22.13.1-alpine3.20@sha256:c52e20859a92b3eccbd3a36c5e1a90adc20617d8d421d65e8a622e87b5dac963 AS core
-
-WORKDIR /usr/src/open-api/typescript-sdk
-COPY open-api/typescript-sdk/package*.json open-api/typescript-sdk/tsconfig*.json ./
-RUN npm ci
-COPY open-api/typescript-sdk/ ./
-RUN npm run build
+FROM node:24.1.0-alpine3.20@sha256:8fe019e0d57dbdce5f5c27c0b63d2775cf34b00e3755a7dea969802d7e0c2b25 AS core
 
 WORKDIR /usr/src/app
-
-COPY cli/package.json cli/package-lock.json ./
-RUN npm ci
-
-COPY cli .
-RUN npm run build
+COPY package* pnpm* .pnpmfile.cjs ./
+COPY ./cli ./cli/
+COPY ./open-api/typescript-sdk ./open-api/typescript-sdk/
+RUN corepack enable pnpm && \
+  pnpm install --filter @immich/sdk --filter @immich/cli --frozen-lockfile && \
+  pnpm --filter @immich/sdk build && \
+  pnpm --filter @immich/cli build
 
 WORKDIR /import
 
-ENTRYPOINT ["node", "/usr/src/app/dist"]
+ENTRYPOINT ["node", "/usr/src/app/cli/dist"]

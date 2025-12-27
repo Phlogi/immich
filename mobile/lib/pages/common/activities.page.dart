@@ -7,18 +7,16 @@ import 'package:immich_mobile/extensions/asyncvalue_extensions.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
 import 'package:immich_mobile/models/activities/activity.model.dart';
 import 'package:immich_mobile/providers/activity.provider.dart';
-import 'package:immich_mobile/widgets/activities/activity_text_field.dart';
-import 'package:immich_mobile/widgets/activities/activity_tile.dart';
-import 'package:immich_mobile/widgets/activities/dismissible_activity.dart';
 import 'package:immich_mobile/providers/album/current_album.provider.dart';
 import 'package:immich_mobile/providers/asset_viewer/current_asset.provider.dart';
 import 'package:immich_mobile/providers/user.provider.dart';
+import 'package:immich_mobile/widgets/activities/activity_text_field.dart';
+import 'package:immich_mobile/widgets/activities/activity_tile.dart';
+import 'package:immich_mobile/widgets/activities/dismissible_activity.dart';
 
 @RoutePage()
 class ActivitiesPage extends HookConsumerWidget {
-  const ActivitiesPage({
-    super.key,
-  });
+  const ActivitiesPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -27,17 +25,15 @@ class ActivitiesPage extends HookConsumerWidget {
     final asset = ref.watch(currentAssetProvider);
     final user = ref.watch(currentUserProvider);
 
-    final activityNotifier = ref
-        .read(albumActivityProvider(album.remoteId!, asset?.remoteId).notifier);
-    final activities =
-        ref.watch(albumActivityProvider(album.remoteId!, asset?.remoteId));
+    final activityNotifier = ref.read(albumActivityProvider(album.remoteId!, asset?.remoteId).notifier);
+    final activities = ref.watch(albumActivityProvider(album.remoteId!, asset?.remoteId));
 
     final listViewScrollController = useScrollController();
 
     Future<void> onAddComment(String comment) async {
       await activityNotifier.addComment(comment);
       // Scroll to the end of the list to show the newly added activity
-      listViewScrollController.animateTo(
+      await listViewScrollController.animateTo(
         listViewScrollController.position.maxScrollExtent + 200,
         duration: const Duration(milliseconds: 600),
         curve: Curves.fastOutSlowIn,
@@ -49,10 +45,7 @@ class ActivitiesPage extends HookConsumerWidget {
       body: activities.widgetWhen(
         onData: (data) {
           final liked = data.firstWhereOrNull(
-            (a) =>
-                a.type == ActivityType.like &&
-                a.user.id == user?.id &&
-                a.assetId == asset?.remoteId,
+            (a) => a.type == ActivityType.like && a.user.id == user?.id && a.assetId == asset?.remoteId,
           );
 
           return SafeArea(
@@ -65,14 +58,11 @@ class ActivitiesPage extends HookConsumerWidget {
                   itemBuilder: (context, index) {
                     // Additional vertical gap after the last element
                     if (index == data.length) {
-                      return const SizedBox(
-                        height: 80,
-                      );
+                      return const SizedBox(height: 80);
                     }
 
                     final activity = data[index];
-                    final canDelete = activity.user.id == user?.id ||
-                        album.ownerId == user?.id;
+                    final canDelete = activity.user.id == user?.id || album.ownerId == user?.id;
 
                     return Padding(
                       padding: const EdgeInsets.all(5),
@@ -80,8 +70,7 @@ class ActivitiesPage extends HookConsumerWidget {
                         activity.id,
                         ActivityTile(activity),
                         onDismiss: canDelete
-                            ? (activityId) async => await activityNotifier
-                                .removeActivity(activity.id)
+                            ? (activityId) async => await activityNotifier.removeActivity(activity.id)
                             : null,
                       ),
                     );

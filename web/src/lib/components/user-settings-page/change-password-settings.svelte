@@ -1,39 +1,30 @@
 <script lang="ts">
-  import {
-    notificationController,
-    NotificationType,
-  } from '$lib/components/shared-components/notification/notification';
-  import { changePassword } from '@immich/sdk';
-  import { fade } from 'svelte/transition';
-
-  import Button from '$lib/components/elements/buttons/button.svelte';
-  import type { HttpError } from '@sveltejs/kit';
   import SettingInputField from '$lib/components/shared-components/settings/setting-input-field.svelte';
-  import { t } from 'svelte-i18n';
+  import SettingSwitch from '$lib/components/shared-components/settings/setting-switch.svelte';
   import { SettingInputFieldType } from '$lib/constants';
+  import { handleError } from '$lib/utils/handle-error';
+  import { changePassword } from '@immich/sdk';
+  import { Button, toastManager } from '@immich/ui';
+  import { t } from 'svelte-i18n';
+  import { fade } from 'svelte/transition';
 
   let password = $state('');
   let newPassword = $state('');
   let confirmPassword = $state('');
+  let invalidateSessions = $state(false);
 
   const handleChangePassword = async () => {
     try {
-      await changePassword({ changePasswordDto: { password, newPassword } });
+      await changePassword({ changePasswordDto: { password, newPassword, invalidateSessions } });
 
-      notificationController.show({
-        message: $t('updated_password'),
-        type: NotificationType.Info,
-      });
+      toastManager.success($t('updated_password'));
 
       password = '';
       newPassword = '';
       confirmPassword = '';
     } catch (error) {
       console.error('Error [user-profile] [changePassword]', error);
-      notificationController.show({
-        message: (error as HttpError)?.body?.message || $t('errors.unable_to_change_password'),
-        type: NotificationType.Error,
-      });
+      handleError(error, $t('errors.unable_to_change_password'));
     }
   };
 
@@ -45,7 +36,7 @@
 <section class="my-4">
   <div in:fade={{ duration: 500 }}>
     <form autocomplete="off" {onsubmit}>
-      <div class="ml-4 mt-4 flex flex-col gap-4">
+      <div class="ms-4 mt-4 flex flex-col gap-4">
         <SettingInputField
           inputType={SettingInputFieldType.PASSWORD}
           label={$t('password')}
@@ -70,10 +61,17 @@
           passwordAutocomplete="new-password"
         />
 
+        <SettingSwitch
+          title={$t('log_out_all_devices')}
+          subtitle={$t('change_password_form_log_out_description')}
+          bind:checked={invalidateSessions}
+        />
+
         <div class="flex justify-end">
           <Button
+            shape="round"
             type="submit"
-            size="sm"
+            size="small"
             disabled={!(password && newPassword && newPassword === confirmPassword)}
             onclick={() => handleChangePassword()}>{$t('save')}</Button
           >

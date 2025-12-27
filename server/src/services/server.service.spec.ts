@@ -28,7 +28,7 @@ describe(ServerService.name, () => {
         diskUseRaw: 300,
       });
 
-      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith('upload/library');
+      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith(expect.stringContaining('/data/library'));
     });
 
     it('should return the disk space as KiB', async () => {
@@ -44,7 +44,7 @@ describe(ServerService.name, () => {
         diskUseRaw: 300_000,
       });
 
-      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith('upload/library');
+      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith(expect.stringContaining('/data/library'));
     });
 
     it('should return the disk space as MiB', async () => {
@@ -60,7 +60,7 @@ describe(ServerService.name, () => {
         diskUseRaw: 300_000_000,
       });
 
-      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith('upload/library');
+      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith(expect.stringContaining('/data/library'));
     });
 
     it('should return the disk space as GiB', async () => {
@@ -80,7 +80,7 @@ describe(ServerService.name, () => {
         diskUseRaw: 300_000_000_000,
       });
 
-      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith('upload/library');
+      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith(expect.stringContaining('/data/library'));
     });
 
     it('should return the disk space as TiB', async () => {
@@ -100,7 +100,7 @@ describe(ServerService.name, () => {
         diskUseRaw: 300_000_000_000_000,
       });
 
-      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith('upload/library');
+      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith(expect.stringContaining('/data/library'));
     });
 
     it('should return the disk space as PiB', async () => {
@@ -120,7 +120,7 @@ describe(ServerService.name, () => {
         diskUseRaw: 300_000_000_000_000_000,
       });
 
-      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith('upload/library');
+      expect(mocks.storage.checkDiskUsage).toHaveBeenCalledWith(expect.stringContaining('/data/library'));
     });
   });
 
@@ -141,6 +141,7 @@ describe(ServerService.name, () => {
         reverseGeocoding: true,
         oauth: false,
         oauthAutoLaunch: false,
+        ocr: true,
         passwordLogin: true,
         search: true,
         sidecar: true,
@@ -165,6 +166,7 @@ describe(ServerService.name, () => {
         publicUsers: true,
         mapDarkStyleUrl: 'https://tiles.immich.cloud/v1/style/dark.json',
         mapLightStyleUrl: 'https://tiles.immich.cloud/v1/style/light.json',
+        maintenanceMode: false,
       });
       expect(mocks.systemMetadata.get).toHaveBeenCalled();
     });
@@ -256,7 +258,7 @@ describe(ServerService.name, () => {
       const license = { licenseKey: 'IMSV-license-key', activationKey: 'activation-key' };
       await sut.setLicense(license);
 
-      expect(mocks.systemMetadata.set).toHaveBeenCalledWith(SystemMetadataKey.LICENSE, expect.any(Object));
+      expect(mocks.systemMetadata.set).toHaveBeenCalledWith(SystemMetadataKey.License, expect.any(Object));
     });
 
     it('should not save license if invalid', async () => {

@@ -1,8 +1,7 @@
 <script lang="ts">
-  import CircleIconButton from '$lib/components/elements/buttons/circle-icon-button.svelte';
-  import CreateSharedLinkModal from '$lib/components/shared-components/create-share-link-modal/create-shared-link-modal.svelte';
-  import Portal from '$lib/components/shared-components/portal/portal.svelte';
+  import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
   import type { AssetResponseDto } from '@immich/sdk';
+  import { IconButton, modalManager } from '@immich/ui';
   import { mdiShareVariantOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
 
@@ -12,13 +11,16 @@
 
   let { asset }: Props = $props();
 
-  let showModal = $state(false);
+  const handleClick = async () => {
+    await modalManager.show(SharedLinkCreateModal, { assetIds: [asset.id] });
+  };
 </script>
 
-<CircleIconButton color="opaque" icon={mdiShareVariantOutline} onclick={() => (showModal = true)} title={$t('share')} />
-
-{#if showModal}
-  <Portal target="body">
-    <CreateSharedLinkModal assetIds={[asset.id]} onClose={() => (showModal = false)} />
-  </Portal>
-{/if}
+<IconButton
+  color="secondary"
+  shape="round"
+  variant="ghost"
+  icon={mdiShareVariantOutline}
+  onclick={handleClick}
+  aria-label={$t('share')}
+/>

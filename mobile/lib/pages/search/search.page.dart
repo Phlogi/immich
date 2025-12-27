@@ -6,15 +6,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/constants/enums.dart';
+import 'package:immich_mobile/domain/models/person.model.dart';
 import 'package:immich_mobile/entities/asset.entity.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
-import 'package:immich_mobile/extensions/theme_extensions.dart';
-import 'package:immich_mobile/interfaces/person_api.interface.dart';
 import 'package:immich_mobile/models/search/search_filter.model.dart';
 import 'package:immich_mobile/providers/search/paginated_search.provider.dart';
 import 'package:immich_mobile/providers/search/search_input_focus.provider.dart';
 import 'package:immich_mobile/routing/router.dart';
 import 'package:immich_mobile/widgets/asset_grid/multiselect_grid.dart';
+import 'package:immich_mobile/widgets/common/search_field.dart';
 import 'package:immich_mobile/widgets/search/search_filter/camera_picker.dart';
 import 'package:immich_mobile/widgets/search/search_filter/display_option_picker.dart';
 import 'package:immich_mobile/widgets/search/search_filter/filter_bottom_sheet_scaffold.dart';
@@ -33,7 +33,7 @@ class SearchPage extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final textSearchType = useState<TextSearchType>(TextSearchType.context);
-    final searchHintText = useState<String>('contextual_search'.tr());
+    final searchHintText = useState<String>('sunrise_on_the_beach'.tr());
     final textSearchController = useTextEditingController();
     final filter = useState<SearchFilter>(
       SearchFilter(
@@ -41,13 +41,9 @@ class SearchPage extends HookConsumerWidget {
         location: prefilter?.location ?? SearchLocationFilter(),
         camera: prefilter?.camera ?? SearchCameraFilter(),
         date: prefilter?.date ?? SearchDateFilter(),
-        display: prefilter?.display ??
-            SearchDisplayFilters(
-              isNotInAlbum: false,
-              isArchive: false,
-              isFavorite: false,
-            ),
+        display: prefilter?.display ?? SearchDisplayFilters(isNotInAlbum: false, isArchive: false, isFavorite: false),
         mediaType: prefilter?.mediaType ?? AssetType.other,
+        language: "${context.locale.languageCode}-${context.locale.countryCode}",
       ),
     );
 
@@ -64,10 +60,7 @@ class SearchPage extends HookConsumerWidget {
 
     SnackBar searchInfoSnackBar(String message) {
       return SnackBar(
-        content: Text(
-          message,
-          style: context.textTheme.labelLarge,
-        ),
+        content: Text(message, style: context.textTheme.labelLarge),
         showCloseIcon: true,
         behavior: SnackBarBehavior.fixed,
         closeIconColor: context.colorScheme.onSurface,
@@ -85,14 +78,10 @@ class SearchPage extends HookConsumerWidget {
 
       isSearching.value = true;
       ref.watch(paginatedSearchProvider.notifier).clear();
-      final hasResult = await ref
-          .watch(paginatedSearchProvider.notifier)
-          .search(filter.value);
+      final hasResult = await ref.watch(paginatedSearchProvider.notifier).search(filter.value);
 
       if (!hasResult) {
-        context.showSnackBar(
-          searchInfoSnackBar('search_no_result'.tr()),
-        );
+        context.showSnackBar(searchInfoSnackBar('search_no_result'.tr()));
       }
 
       previousFilter.value = filter.value;
@@ -101,14 +90,10 @@ class SearchPage extends HookConsumerWidget {
 
     loadMoreSearchResult() async {
       isSearching.value = true;
-      final hasResult = await ref
-          .watch(paginatedSearchProvider.notifier)
-          .search(filter.value);
+      final hasResult = await ref.watch(paginatedSearchProvider.notifier).search(filter.value);
 
       if (!hasResult) {
-        context.showSnackBar(
-          searchInfoSnackBar('search_no_more_result'.tr()),
-        );
+        context.showSnackBar(searchInfoSnackBar('search_no_more_result'.tr()));
       }
 
       isSearching.value = false;
@@ -116,39 +101,26 @@ class SearchPage extends HookConsumerWidget {
 
     searchPrefilter() {
       if (prefilter != null) {
-        Future.delayed(
-          Duration.zero,
-          () {
-            search();
+        Future.delayed(Duration.zero, () {
+          search();
 
-            if (prefilter!.location.city != null) {
-              locationCurrentFilterWidget.value = Text(
-                prefilter!.location.city!,
-                style: context.textTheme.labelLarge,
-              );
-            }
-          },
-        );
+          if (prefilter!.location.city != null) {
+            locationCurrentFilterWidget.value = Text(prefilter!.location.city!, style: context.textTheme.labelLarge);
+          }
+        });
       }
     }
 
-    useEffect(
-      () {
-        Future.microtask(
-          () => ref.invalidate(paginatedSearchProvider),
-        );
-        searchPrefilter();
+    useEffect(() {
+      Future.microtask(() => ref.invalidate(paginatedSearchProvider));
+      searchPrefilter();
 
-        return null;
-      },
-      [],
-    );
+      return null;
+    }, []);
 
     showPeoplePicker() {
-      handleOnSelect(Set<Person> value) {
-        filter.value = filter.value.copyWith(
-          people: value,
-        );
+      handleOnSelect(Set<PersonDto> value) {
+        filter.value = filter.value.copyWith(people: value);
 
         peopleCurrentFilterWidget.value = Text(
           value.map((e) => e.name != '' ? e.name : 'no_name'.tr()).join(', '),
@@ -157,9 +129,7 @@ class SearchPage extends HookConsumerWidget {
       }
 
       handleClear() {
-        filter.value = filter.value.copyWith(
-          people: {},
-        );
+        filter.value = filter.value.copyWith(people: {});
 
         peopleCurrentFilterWidget.value = null;
         search();
@@ -175,10 +145,7 @@ class SearchPage extends HookConsumerWidget {
             expanded: true,
             onSearch: search,
             onClear: handleClear,
-            child: PeoplePicker(
-              onSelect: handleOnSelect,
-              filter: filter.value.people,
-            ),
+            child: PeoplePicker(onSelect: handleOnSelect, filter: filter.value.people),
           ),
         ),
       );
@@ -187,11 +154,7 @@ class SearchPage extends HookConsumerWidget {
     showLocationPicker() {
       handleOnSelect(Map<String, String?> value) {
         filter.value = filter.value.copyWith(
-          location: SearchLocationFilter(
-            country: value['country'],
-            city: value['city'],
-            state: value['state'],
-          ),
+          location: SearchLocationFilter(country: value['country'], city: value['city'], state: value['state']),
         );
 
         final locationText = <String>[];
@@ -207,16 +170,11 @@ class SearchPage extends HookConsumerWidget {
           locationText.add(value['city']!);
         }
 
-        locationCurrentFilterWidget.value = Text(
-          locationText.join(', '),
-          style: context.textTheme.labelLarge,
-        );
+        locationCurrentFilterWidget.value = Text(locationText.join(', '), style: context.textTheme.labelLarge);
       }
 
       handleClear() {
-        filter.value = filter.value.copyWith(
-          location: SearchLocationFilter(),
-        );
+        filter.value = filter.value.copyWith(location: SearchLocationFilter());
 
         locationCurrentFilterWidget.value = null;
         search();
@@ -233,15 +191,10 @@ class SearchPage extends HookConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),
             child: Container(
-              padding: EdgeInsets.only(
-                bottom: context.viewInsets.bottom,
-              ),
+              padding: EdgeInsets.only(bottom: context.viewInsets.bottom),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: LocationPicker(
-                  onSelected: handleOnSelect,
-                  filter: filter.value.location,
-                ),
+                child: LocationPicker(onSelected: handleOnSelect, filter: filter.value.location),
               ),
             ),
           ),
@@ -252,10 +205,7 @@ class SearchPage extends HookConsumerWidget {
     showCameraPicker() {
       handleOnSelect(Map<String, String?> value) {
         filter.value = filter.value.copyWith(
-          camera: SearchCameraFilter(
-            make: value['make'],
-            model: value['model'],
-          ),
+          camera: SearchCameraFilter(make: value['make'], model: value['model']),
         );
 
         cameraCurrentFilterWidget.value = Text(
@@ -265,9 +215,7 @@ class SearchPage extends HookConsumerWidget {
       }
 
       handleClear() {
-        filter.value = filter.value.copyWith(
-          camera: SearchCameraFilter(),
-        );
+        filter.value = filter.value.copyWith(camera: SearchCameraFilter());
 
         cameraCurrentFilterWidget.value = null;
         search();
@@ -283,10 +231,7 @@ class SearchPage extends HookConsumerWidget {
           onClear: handleClear,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
-            child: CameraPicker(
-              onSelect: handleOnSelect,
-              filter: filter.value.camera,
-            ),
+            child: CameraPicker(onSelect: handleOnSelect, filter: filter.value.camera),
           ),
         ),
       );
@@ -306,9 +251,9 @@ class SearchPage extends HookConsumerWidget {
           end: filter.value.date.takenBefore ?? lastDate,
         ),
         helpText: 'search_filter_date_title'.tr(),
-        cancelText: 'action_common_cancel'.tr(),
-        confirmText: 'action_common_select'.tr(),
-        saveText: 'action_common_save'.tr(),
+        cancelText: 'cancel'.tr(),
+        confirmText: 'select'.tr(),
+        saveText: 'save'.tr(),
         errorFormatText: 'invalid_date_format'.tr(),
         errorInvalidText: 'invalid_date'.tr(),
         fieldStartHintText: 'start_date'.tr(),
@@ -318,25 +263,17 @@ class SearchPage extends HookConsumerWidget {
       );
 
       if (date == null) {
-        filter.value = filter.value.copyWith(
-          date: SearchDateFilter(),
-        );
+        filter.value = filter.value.copyWith(date: SearchDateFilter());
 
         dateRangeCurrentFilterWidget.value = null;
-        search();
+        unawaited(search());
         return;
       }
 
       filter.value = filter.value.copyWith(
         date: SearchDateFilter(
           takenAfter: date.start,
-          takenBefore: date.end.add(
-            const Duration(
-              hours: 23,
-              minutes: 59,
-              seconds: 59,
-            ),
-          ),
+          takenBefore: date.end.add(const Duration(hours: 23, minutes: 59, seconds: 59)),
         ),
       );
 
@@ -358,30 +295,26 @@ class SearchPage extends HookConsumerWidget {
         );
       }
 
-      search();
+      unawaited(search());
     }
 
     // MEDIA PICKER
     showMediaTypePicker() {
       handleOnSelected(AssetType assetType) {
-        filter.value = filter.value.copyWith(
-          mediaType: assetType,
-        );
+        filter.value = filter.value.copyWith(mediaType: assetType);
 
         mediaTypeCurrentFilterWidget.value = Text(
           assetType == AssetType.image
-              ? 'search_filter_media_type_image'.tr()
+              ? 'image'.tr()
               : assetType == AssetType.video
-                  ? 'search_filter_media_type_video'.tr()
-                  : 'search_filter_media_type_all'.tr(),
+              ? 'video'.tr()
+              : 'all'.tr(),
           style: context.textTheme.labelLarge,
         );
       }
 
       handleClear() {
-        filter.value = filter.value.copyWith(
-          mediaType: AssetType.other,
-        );
+        filter.value = filter.value.copyWith(mediaType: AssetType.other);
 
         mediaTypeCurrentFilterWidget.value = null;
         search();
@@ -393,10 +326,7 @@ class SearchPage extends HookConsumerWidget {
           title: 'search_filter_media_type_title'.tr(),
           onSearch: search,
           onClear: handleClear,
-          child: MediaTypePicker(
-            onSelect: handleOnSelected,
-            filter: filter.value.mediaType,
-          ),
+          child: MediaTypePicker(onSelect: handleOnSelected, filter: filter.value.mediaType),
         ),
       );
     }
@@ -408,34 +338,21 @@ class SearchPage extends HookConsumerWidget {
         value.forEach((key, value) {
           switch (key) {
             case DisplayOption.notInAlbum:
-              filter.value = filter.value.copyWith(
-                display: filter.value.display.copyWith(
-                  isNotInAlbum: value,
-                ),
-              );
+              filter.value = filter.value.copyWith(display: filter.value.display.copyWith(isNotInAlbum: value));
               if (value) {
-                filterText
-                    .add('search_filter_display_option_not_in_album'.tr());
+                filterText.add('search_filter_display_option_not_in_album'.tr());
               }
               break;
             case DisplayOption.archive:
-              filter.value = filter.value.copyWith(
-                display: filter.value.display.copyWith(
-                  isArchive: value,
-                ),
-              );
+              filter.value = filter.value.copyWith(display: filter.value.display.copyWith(isArchive: value));
               if (value) {
-                filterText.add('search_filter_display_option_archive'.tr());
+                filterText.add('archive'.tr());
               }
               break;
             case DisplayOption.favorite:
-              filter.value = filter.value.copyWith(
-                display: filter.value.display.copyWith(
-                  isFavorite: value,
-                ),
-              );
+              filter.value = filter.value.copyWith(display: filter.value.display.copyWith(isFavorite: value));
               if (value) {
-                filterText.add('search_filter_display_option_favorite'.tr());
+                filterText.add('favorite'.tr());
               }
               break;
           }
@@ -446,19 +363,12 @@ class SearchPage extends HookConsumerWidget {
           return;
         }
 
-        displayOptionCurrentFilterWidget.value = Text(
-          filterText.join(', '),
-          style: context.textTheme.labelLarge,
-        );
+        displayOptionCurrentFilterWidget.value = Text(filterText.join(', '), style: context.textTheme.labelLarge);
       }
 
       handleClear() {
         filter.value = filter.value.copyWith(
-          display: SearchDisplayFilters(
-            isNotInAlbum: false,
-            isArchive: false,
-            isFavorite: false,
-          ),
+          display: SearchDisplayFilters(isNotInAlbum: false, isArchive: false, isFavorite: false),
         );
 
         displayOptionCurrentFilterWidget.value = null;
@@ -468,13 +378,10 @@ class SearchPage extends HookConsumerWidget {
       showFilterBottomSheet(
         context: context,
         child: FilterBottomSheetScaffold(
-          title: 'search_filter_display_options_title'.tr(),
+          title: 'display_options'.tr(),
           onSearch: search,
           onClear: handleClear,
-          child: DisplayOptionPicker(
-            onSelect: handleOnSelect,
-            filter: filter.value.display,
-          ),
+          child: DisplayOptionPicker(onSelect: handleOnSelect, filter: filter.value.display),
         ),
       );
     }
@@ -482,48 +389,33 @@ class SearchPage extends HookConsumerWidget {
     handleTextSubmitted(String value) {
       switch (textSearchType.value) {
         case TextSearchType.context:
-          filter.value = filter.value.copyWith(
-            filename: '',
-            context: value,
-            description: '',
-          );
+          filter.value = filter.value.copyWith(filename: '', context: value, description: '', ocr: '');
 
           break;
         case TextSearchType.filename:
-          filter.value = filter.value.copyWith(
-            filename: value,
-            context: '',
-            description: '',
-          );
+          filter.value = filter.value.copyWith(filename: value, context: '', description: '', ocr: '');
 
           break;
         case TextSearchType.description:
-          filter.value = filter.value.copyWith(
-            filename: '',
-            context: '',
-            description: value,
-          );
+          filter.value = filter.value.copyWith(filename: '', context: '', description: value, ocr: '');
+          break;
+        case TextSearchType.ocr:
+          filter.value = filter.value.copyWith(filename: '', context: '', description: '', ocr: value);
           break;
       }
 
       search();
     }
 
-    IconData getSearchPrefixIcon() {
-      switch (textSearchType.value) {
-        case TextSearchType.context:
-          return Icons.image_search_rounded;
-        case TextSearchType.filename:
-          return Icons.abc_rounded;
-        case TextSearchType.description:
-          return Icons.text_snippet_outlined;
-        default:
-          return Icons.search_rounded;
-      }
-    }
+    IconData getSearchPrefixIcon() => switch (textSearchType.value) {
+      TextSearchType.context => Icons.image_search_rounded,
+      TextSearchType.filename => Icons.abc_rounded,
+      TextSearchType.description => Icons.text_snippet_outlined,
+      TextSearchType.ocr => Icons.document_scanner_outlined,
+    };
 
     return Scaffold(
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         automaticallyImplyLeading: true,
         actions: [
@@ -533,19 +425,11 @@ class SearchPage extends HookConsumerWidget {
               style: MenuStyle(
                 elevation: const WidgetStatePropertyAll(1),
                 shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
+                  const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
                 ),
-                padding: const WidgetStatePropertyAll(
-                  EdgeInsets.all(4),
-                ),
+                padding: const WidgetStatePropertyAll(EdgeInsets.all(4)),
               ),
-              builder: (
-                BuildContext context,
-                MenuController controller,
-                Widget? child,
-              ) {
+              builder: (BuildContext context, MenuController controller, Widget? child) {
                 return IconButton(
                   onPressed: () {
                     if (controller.isOpen) {
@@ -555,7 +439,7 @@ class SearchPage extends HookConsumerWidget {
                     }
                   },
                   icon: const Icon(Icons.more_vert_rounded),
-                  tooltip: 'Show text search menu',
+                  tooltip: 'show_text_search_menu'.tr(),
                 );
               },
               menuChildren: [
@@ -563,12 +447,10 @@ class SearchPage extends HookConsumerWidget {
                   child: ListTile(
                     leading: const Icon(Icons.image_search_rounded),
                     title: Text(
-                      'search_filter_contextual'.tr(),
+                      'search_by_context'.tr(),
                       style: context.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: textSearchType.value == TextSearchType.context
-                            ? context.colorScheme.primary
-                            : null,
+                        color: textSearchType.value == TextSearchType.context ? context.colorScheme.primary : null,
                       ),
                     ),
                     selectedColor: context.colorScheme.primary,
@@ -576,7 +458,7 @@ class SearchPage extends HookConsumerWidget {
                   ),
                   onPressed: () {
                     textSearchType.value = TextSearchType.context;
-                    searchHintText.value = 'contextual_search'.tr();
+                    searchHintText.value = 'sunrise_on_the_beach'.tr();
                   },
                 ),
                 MenuItemButton(
@@ -586,9 +468,7 @@ class SearchPage extends HookConsumerWidget {
                       'search_filter_filename'.tr(),
                       style: context.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: textSearchType.value == TextSearchType.filename
-                            ? context.colorScheme.primary
-                            : null,
+                        color: textSearchType.value == TextSearchType.filename ? context.colorScheme.primary : null,
                       ),
                     ),
                     selectedColor: context.colorScheme.primary,
@@ -596,29 +476,43 @@ class SearchPage extends HookConsumerWidget {
                   ),
                   onPressed: () {
                     textSearchType.value = TextSearchType.filename;
-                    searchHintText.value = 'filename_search'.tr();
+                    searchHintText.value = 'file_name_or_extension'.tr();
                   },
                 ),
                 MenuItemButton(
                   child: ListTile(
                     leading: const Icon(Icons.text_snippet_outlined),
                     title: Text(
-                      'search_filter_description'.tr(),
+                      'search_by_description'.tr(),
                       style: context.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color:
-                            textSearchType.value == TextSearchType.description
-                                ? context.colorScheme.primary
-                                : null,
+                        color: textSearchType.value == TextSearchType.description ? context.colorScheme.primary : null,
                       ),
                     ),
                     selectedColor: context.colorScheme.primary,
-                    selected:
-                        textSearchType.value == TextSearchType.description,
+                    selected: textSearchType.value == TextSearchType.description,
                   ),
                   onPressed: () {
                     textSearchType.value = TextSearchType.description;
-                    searchHintText.value = 'description_search'.tr();
+                    searchHintText.value = 'search_by_description_example'.tr();
+                  },
+                ),
+                MenuItemButton(
+                  child: ListTile(
+                    leading: const Icon(Icons.document_scanner_outlined),
+                    title: Text(
+                      'search_filter_ocr'.tr(),
+                      style: context.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: textSearchType.value == TextSearchType.ocr ? context.colorScheme.primary : null,
+                      ),
+                    ),
+                    selectedColor: context.colorScheme.primary,
+                    selected: textSearchType.value == TextSearchType.ocr,
+                  ),
+                  onPressed: () {
+                    textSearchType.value = TextSearchType.ocr;
+                    searchHintText.value = 'search_by_ocr_example'.tr();
                   },
                 ),
               ],
@@ -627,66 +521,26 @@ class SearchPage extends HookConsumerWidget {
         ],
         title: Container(
           decoration: BoxDecoration(
-            border: Border.all(
-              color: context.colorScheme.onSurface.withAlpha(0),
-              width: 0,
-            ),
-            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: context.colorScheme.onSurface.withAlpha(0), width: 0),
+            borderRadius: const BorderRadius.all(Radius.circular(24)),
             gradient: LinearGradient(
               colors: [
-                context.colorScheme.primary.withOpacity(0.075),
-                context.colorScheme.primary.withOpacity(0.09),
-                context.colorScheme.primary.withOpacity(0.075),
+                context.colorScheme.primary.withValues(alpha: 0.075),
+                context.colorScheme.primary.withValues(alpha: 0.09),
+                context.colorScheme.primary.withValues(alpha: 0.075),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
-          child: TextField(
+          child: SearchField(
+            hintText: searchHintText.value,
             key: const Key('search_text_field'),
             controller: textSearchController,
-            decoration: InputDecoration(
-              contentPadding: prefilter != null
-                  ? const EdgeInsets.only(left: 24)
-                  : const EdgeInsets.all(8),
-              prefixIcon: prefilter != null
-                  ? null
-                  : Icon(
-                      getSearchPrefixIcon(),
-                      color: context.colorScheme.primary,
-                    ),
-              hintText: searchHintText.value,
-              hintStyle: context.textTheme.bodyLarge?.copyWith(
-                color: context.themeData.colorScheme.onSurfaceSecondary,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide(
-                  color: context.colorScheme.surfaceDim,
-                ),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide(
-                  color: context.colorScheme.surfaceContainer,
-                ),
-              ),
-              disabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide(
-                  color: context.colorScheme.surfaceDim,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(25),
-                borderSide: BorderSide(
-                  color: context.colorScheme.primary.withAlpha(100),
-                ),
-              ),
-            ),
+            contentPadding: prefilter != null ? const EdgeInsets.only(left: 24) : const EdgeInsets.all(8),
+            prefixIcon: prefilter != null ? null : Icon(getSearchPrefixIcon(), color: context.colorScheme.primary),
             onSubmitted: handleTextSubmitted,
             focusNode: ref.watch(searchInputFocusProvider),
-            onTapOutside: (_) => ref.read(searchInputFocusProvider).unfocus(),
           ),
         ),
       ),
@@ -703,25 +557,25 @@ class SearchPage extends HookConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   SearchFilterChip(
-                    icon: Icons.people_alt_rounded,
+                    icon: Icons.people_alt_outlined,
                     onTap: showPeoplePicker,
-                    label: 'search_filter_people'.tr(),
+                    label: 'people'.tr(),
                     currentFilter: peopleCurrentFilterWidget.value,
                   ),
                   SearchFilterChip(
-                    icon: Icons.location_pin,
+                    icon: Icons.location_on_outlined,
                     onTap: showLocationPicker,
                     label: 'search_filter_location'.tr(),
                     currentFilter: locationCurrentFilterWidget.value,
                   ),
                   SearchFilterChip(
-                    icon: Icons.camera_alt_rounded,
+                    icon: Icons.camera_alt_outlined,
                     onTap: showCameraPicker,
-                    label: 'search_filter_camera'.tr(),
+                    label: 'camera'.tr(),
                     currentFilter: cameraCurrentFilterWidget.value,
                   ),
                   SearchFilterChip(
-                    icon: Icons.date_range_rounded,
+                    icon: Icons.date_range_outlined,
                     onTap: showDatePicker,
                     label: 'search_filter_date'.tr(),
                     currentFilter: dateRangeCurrentFilterWidget.value,
@@ -744,14 +598,9 @@ class SearchPage extends HookConsumerWidget {
             ),
           ),
           if (isSearching.value)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator.adaptive()),
-            )
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else
-            SearchResultGrid(
-              onScrollEnd: loadMoreSearchResult,
-              isSearching: isSearching.value,
-            ),
+            SearchResultGrid(onScrollEnd: loadMoreSearchResult, isSearching: isSearching.value),
         ],
       ),
     );
@@ -762,11 +611,7 @@ class SearchResultGrid extends StatelessWidget {
   final VoidCallback onScrollEnd;
   final bool isSearching;
 
-  const SearchResultGrid({
-    super.key,
-    required this.onScrollEnd,
-    this.isSearching = false,
-  });
+  const SearchResultGrid({super.key, required this.onScrollEnd, this.isSearching = false});
 
   @override
   Widget build(BuildContext context) {
@@ -775,17 +620,13 @@ class SearchResultGrid extends StatelessWidget {
         padding: const EdgeInsets.only(top: 8.0),
         child: NotificationListener<ScrollEndNotification>(
           onNotification: (notification) {
-            final isBottomSheetNotification = notification.context
-                    ?.findAncestorWidgetOfExactType<
-                        DraggableScrollableSheet>() !=
-                null;
+            final isBottomSheetNotification =
+                notification.context?.findAncestorWidgetOfExactType<DraggableScrollableSheet>() != null;
 
             final metrics = notification.metrics;
             final isVerticalScroll = metrics.axis == Axis.vertical;
 
-            if (metrics.pixels >= metrics.maxScrollExtent &&
-                isVerticalScroll &&
-                !isBottomSheetNotification) {
+            if (metrics.pixels >= metrics.maxScrollExtent && isVerticalScroll && !isBottomSheetNotification) {
               onScrollEnd();
             }
 
@@ -798,11 +639,10 @@ class SearchResultGrid extends StatelessWidget {
             editEnabled: true,
             favoriteEnabled: true,
             stackEnabled: false,
+            dragScrollLabelEnabled: false,
             emptyIndicator: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: !isSearching
-                  ? const SearchEmptyContent()
-                  : const SizedBox.shrink(),
+              child: !isSearching ? const SearchEmptyContent() : const SizedBox.shrink(),
             ),
           ),
         ),
@@ -824,19 +664,12 @@ class SearchEmptyContent extends StatelessWidget {
           const SizedBox(height: 40),
           Center(
             child: Image.asset(
-              context.isDarkTheme
-                  ? 'assets/polaroid-dark.png'
-                  : 'assets/polaroid-light.png',
+              context.isDarkTheme ? 'assets/polaroid-dark.png' : 'assets/polaroid-light.png',
               height: 125,
             ),
           ),
           const SizedBox(height: 16),
-          Center(
-            child: Text(
-              'search_page_search_photos_videos'.tr(),
-              style: context.textTheme.labelLarge,
-            ),
-          ),
+          Center(child: Text('search_page_search_photos_videos'.tr(), style: context.textTheme.labelLarge)),
           const SizedBox(height: 32),
           const QuickLinkList(),
         ],
@@ -852,11 +685,8 @@ class QuickLinkList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: context.colorScheme.outline.withAlpha(10),
-          width: 1,
-        ),
+        borderRadius: const BorderRadius.all(Radius.circular(20)),
+        border: Border.all(color: context.colorScheme.outline.withAlpha(10), width: 1),
         gradient: LinearGradient(
           colors: [
             context.colorScheme.primary.withAlpha(10),
@@ -872,10 +702,10 @@ class QuickLinkList extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         children: [
           QuickLink(
-            title: 'recently_added'.tr(),
+            title: 'recently_taken'.tr(),
             icon: Icons.schedule_outlined,
             isTop: true,
-            onTap: () => context.pushRoute(const RecentlyAddedRoute()),
+            onTap: () => context.pushRoute(const RecentlyTakenRoute()),
           ),
           QuickLink(
             title: 'videos'.tr(),
@@ -920,19 +750,9 @@ class QuickLink extends StatelessWidget {
     );
 
     return ListTile(
-      shape: RoundedRectangleBorder(
-        borderRadius: borderRadius,
-      ),
-      leading: Icon(
-        icon,
-        size: 26,
-      ),
-      title: Text(
-        title,
-        style: context.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w500,
-        ),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: borderRadius),
+      leading: Icon(icon, size: 26),
+      title: Text(title, style: context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w500)),
       onTap: onTap,
     );
   }

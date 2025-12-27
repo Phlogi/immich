@@ -29,7 +29,8 @@
   <a href="README_de_DE.md">Deutsch</a>
   <a href="README_nl_NL.md">Nederlands</a>
   <a href="README_tr_TR.md">Türkçe</a>
-  <a href="README_zh_CN.md">中文</a>
+  <a href="README_zh_CN.md">简体中文</a>
+  <a href="README_zh_TW.md">正體中文</a>
   <a href="README_uk_UA.md">Українська</a>
   <a href="README_ru_RU.md">Русский</a>
   <a href="README_pt_BR.md">Português Brasileiro</a>
@@ -46,13 +47,13 @@
 
 ## Innehåll
 
-- [Officiell Dokumentation](https://immich.app/docs)
+- [Officiell Dokumentation](https://docs.immich.app)
 - [Roadmap](https://github.com/orgs/immich-app/projects/1)
 - [Demo](#demo)
 - [Funktioner](#features)
-- [Introduktion](https://immich.app/docs/overview/introduction)
-- [Installation](https://immich.app/docs/install/requirements)
-- [Riktlinjer för Bidrag](https://immich.app/docs/overview/support-the-project)
+- [Introduktion](https://docs.immich.app/overview/introduction)
+- [Installation](https://docs.immich.app/install/requirements)
+- [Riktlinjer för Bidrag](https://docs.immich.app/overview/support-the-project)
 
 ## Dokumentation
 
@@ -60,18 +61,12 @@ Dokumentation och installationsguider hittas på https://imiich.app/.
 
 ## Demo
 
-Ett webb-demo finns att testa på https://demo.immich.app
-
-Använd `https://demo.immich.app/api` i mobilappen som `Server Endpoint URL`
+Ett webb-demo finns att testa på https://demo.immich.app. Använd `https://demo.immich.app` i mobilappen som `Server Endpoint URL`
 
 ```bash title="Inloggningsuppgifter För Demo"
 Inloggsningsuppgifter
 epost: demo@immich.app
 lösenord: demo
-```
-
-```
-Spec: Free-tier Oracle VM - Amsterdam - 2.4Ghz quad-core ARM64 CPU, 24GB RAM
 ```
 
 ## Aktiviteter

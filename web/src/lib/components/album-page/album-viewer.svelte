@@ -1,25 +1,29 @@
 <script lang="ts">
-  import SelectAllAssets from '$lib/components/photos-page/actions/select-all-assets.svelte';
+  import { shortcut } from '$lib/actions/shortcut';
+  import CastButton from '$lib/cast/cast-button.svelte';
+  import AlbumMap from '$lib/components/album-page/album-map.svelte';
+  import DownloadAction from '$lib/components/timeline/actions/DownloadAction.svelte';
+  import SelectAllAssets from '$lib/components/timeline/actions/SelectAllAction.svelte';
+  import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
+  import Timeline from '$lib/components/timeline/Timeline.svelte';
+  import { featureFlagsManager } from '$lib/managers/feature-flags-manager.svelte';
+  import { TimelineManager } from '$lib/managers/timeline-manager/timeline-manager.svelte';
+  import { handleDownloadAlbum } from '$lib/services/album.service';
+  import { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
   import { assetViewingStore } from '$lib/stores/asset-viewing.store';
   import { dragAndDropFilesStore } from '$lib/stores/drag-and-drop-files.store';
+  import { mobileDevice } from '$lib/stores/mobile-device.svelte';
+  import { SlideshowNavigation, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
+  import { handlePromiseError } from '$lib/utils';
+  import { cancelMultiselect } from '$lib/utils/asset-utils';
   import { fileUploadHandler, openFileUploadDialog } from '$lib/utils/file-uploader';
   import type { AlbumResponseDto, SharedLinkResponseDto, UserResponseDto } from '@immich/sdk';
-  import { AssetStore } from '$lib/stores/assets.store';
-  import { cancelMultiselect, downloadAlbum } from '$lib/utils/asset-utils';
-  import CircleIconButton from '../elements/buttons/circle-icon-button.svelte';
-  import DownloadAction from '../photos-page/actions/download-action.svelte';
-  import AssetGrid from '../photos-page/asset-grid.svelte';
-  import AssetSelectControlBar from '../photos-page/asset-select-control-bar.svelte';
-  import ControlAppBar from '../shared-components/control-app-bar.svelte';
-  import ImmichLogoSmallLink from '../shared-components/immich-logo-small-link.svelte';
-  import ThemeButton from '../shared-components/theme-button.svelte';
-  import { shortcut } from '$lib/actions/shortcut';
-  import { mdiFileImagePlusOutline, mdiFolderDownloadOutline } from '@mdi/js';
-  import { handlePromiseError } from '$lib/utils';
-  import AlbumSummary from './album-summary.svelte';
+  import { IconButton, Logo } from '@immich/ui';
+  import { mdiDownload, mdiFileImagePlusOutline, mdiPresentationPlay } from '@mdi/js';
   import { t } from 'svelte-i18n';
-  import { onDestroy } from 'svelte';
-  import { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
+  import ControlAppBar from '../shared-components/control-app-bar.svelte';
+  import ThemeButton from '../shared-components/theme-button.svelte';
+  import AlbumSummary from './album-summary.svelte';
 
   interface Props {
     sharedLink: SharedLinkResponseDto;
@@ -29,25 +33,34 @@
   let { sharedLink, user = undefined }: Props = $props();
 
   const album = sharedLink.album as AlbumResponseDto;
-  let innerWidth: number = $state(0);
 
-  let { isViewing: showAssetViewer } = assetViewingStore;
+  let { isViewing: showAssetViewer, setAssetId } = assetViewingStore;
+  let { slideshowState, slideshowNavigation } = slideshowStore;
 
-  const assetStore = new AssetStore({ albumId: album.id, order: album.order });
+  const options = $derived({ albumId: album.id, order: album.order });
+  let timelineManager = $state<TimelineManager>() as TimelineManager;
+
   const assetInteraction = new AssetInteraction();
 
   dragAndDropFilesStore.subscribe((value) => {
     if (value.isDragging && value.files.length > 0) {
-      handlePromiseError(fileUploadHandler(value.files, album.id));
+      handlePromiseError(fileUploadHandler({ files: value.files, albumId: album.id }));
       dragAndDropFilesStore.set({ isDragging: false, files: [] });
     }
   });
-  onDestroy(() => {
-    assetStore.destroy();
-  });
+
+  const handleStartSlideshow = async () => {
+    const asset =
+      $slideshowNavigation === SlideshowNavigation.Shuffle
+        ? await timelineManager.getRandomAsset()
+        : timelineManager.months[0]?.dayGroups[0]?.viewerAssets[0]?.asset;
+    if (asset) {
+      handlePromiseError(setAssetId(asset.id).then(() => ($slideshowState = SlideshowState.PlaySlideshow)));
+    }
+  };
 </script>
 
-<svelte:window
+<svelte:document
   use:shortcut={{
     shortcut: { key: 'Escape' },
     onShortcut: () => {
@@ -56,57 +69,13 @@
       }
     },
   }}
-  bind:innerWidth
 />
 
-<header>
-  {#if assetInteraction.selectionActive}
-    <AssetSelectControlBar
-      ownerId={user?.id}
-      assets={assetInteraction.selectedAssets}
-      clearSelect={() => assetInteraction.clearMultiselect()}
-    >
-      <SelectAllAssets {assetStore} {assetInteraction} />
-      {#if sharedLink.allowDownload}
-        <DownloadAction filename="{album.albumName}.zip" />
-      {/if}
-    </AssetSelectControlBar>
-  {:else}
-    <ControlAppBar showBackButton={false}>
-      {#snippet leading()}
-        <ImmichLogoSmallLink width={innerWidth} />
-      {/snippet}
-
-      {#snippet trailing()}
-        {#if sharedLink.allowUpload}
-          <CircleIconButton
-            title={$t('add_photos')}
-            onclick={() => openFileUploadDialog({ albumId: album.id })}
-            icon={mdiFileImagePlusOutline}
-          />
-        {/if}
-
-        {#if album.assetCount > 0 && sharedLink.allowDownload}
-          <CircleIconButton
-            title={$t('download')}
-            onclick={() => downloadAlbum(album)}
-            icon={mdiFolderDownloadOutline}
-          />
-        {/if}
-
-        <ThemeButton />
-      {/snippet}
-    </ControlAppBar>
-  {/if}
-</header>
-
-<main class="relative h-screen overflow-hidden bg-immich-bg px-6 pt-[var(--navbar-height)] dark:bg-immich-dark-bg">
-  <AssetGrid enableRouting={true} {album} {assetStore} {assetInteraction}>
-    <section class="pt-8 md:pt-24">
+<main class="relative h-dvh overflow-hidden px-2 md:px-6 max-md:pt-(--navbar-height-md) pt-(--navbar-height)">
+  <Timeline enableRouting={true} {album} bind:timelineManager {options} {assetInteraction}>
+    <section class="pt-8 md:pt-24 px-2 md:px-0">
       <!-- ALBUM TITLE -->
-      <h1
-        class="bg-immich-bg text-2xl md:text-4xl lg:text-6xl text-immich-primary outline-none transition-all dark:bg-immich-dark-bg dark:text-immich-dark-primary"
-      >
+      <h1 class="text-2xl md:text-4xl lg:text-6xl text-primary outline-none transition-all">
         {album.albumName}
       </h1>
 
@@ -117,11 +86,72 @@
       <!-- ALBUM DESCRIPTION -->
       {#if album.description}
         <p
-          class="whitespace-pre-line mb-12 mt-6 w-full pb-2 text-left font-medium text-base text-black dark:text-gray-300"
+          class="whitespace-pre-line mb-12 mt-6 w-full pb-2 text-start font-medium text-base text-black dark:text-gray-300"
         >
           {album.description}
         </p>
       {/if}
     </section>
-  </AssetGrid>
+  </Timeline>
 </main>
+
+<header>
+  {#if assetInteraction.selectionActive}
+    <AssetSelectControlBar
+      ownerId={user?.id}
+      assets={assetInteraction.selectedAssets}
+      clearSelect={() => assetInteraction.clearMultiselect()}
+    >
+      <SelectAllAssets {timelineManager} {assetInteraction} />
+      {#if sharedLink.allowDownload}
+        <DownloadAction filename="{album.albumName}.zip" />
+      {/if}
+    </AssetSelectControlBar>
+  {:else}
+    <ControlAppBar showBackButton={false}>
+      {#snippet leading()}
+        <a data-sveltekit-preload-data="hover" class="ms-4" href="/">
+          <Logo variant={mobileDevice.maxMd ? 'icon' : 'inline'} class="min-w-10" />
+        </a>
+      {/snippet}
+
+      {#snippet trailing()}
+        <CastButton />
+
+        {#if sharedLink.allowUpload}
+          <IconButton
+            shape="round"
+            color="secondary"
+            variant="ghost"
+            aria-label={$t('add_photos')}
+            onclick={() => openFileUploadDialog({ albumId: album.id })}
+            icon={mdiFileImagePlusOutline}
+          />
+        {/if}
+
+        {#if album.assetCount > 0 && sharedLink.allowDownload}
+          <IconButton
+            shape="round"
+            variant="ghost"
+            color="secondary"
+            aria-label={$t('slideshow')}
+            onclick={handleStartSlideshow}
+            icon={mdiPresentationPlay}
+          />
+          <IconButton
+            shape="round"
+            color="secondary"
+            variant="ghost"
+            aria-label={$t('download')}
+            onclick={() => handleDownloadAlbum(album)}
+            icon={mdiDownload}
+          />
+        {/if}
+        {#if sharedLink.showMetadata && featureFlagsManager.value.map}
+          <AlbumMap {album} />
+        {/if}
+        <ThemeButton />
+      {/snippet}
+    </ControlAppBar>
+  {/if}
+</header>

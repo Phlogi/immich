@@ -1,15 +1,13 @@
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:immich_mobile/services/trash.service.dart';
 import 'package:immich_mobile/entities/asset.entity.dart';
+import 'package:immich_mobile/services/trash.service.dart';
 import 'package:logging/logging.dart';
 
 class TrashNotifier extends StateNotifier<bool> {
   final TrashService _trashService;
   final _log = Logger('TrashNotifier');
 
-  TrashNotifier(
-    this._trashService,
-  ) : super(false);
+  TrashNotifier(this._trashService) : super(false);
 
   Future<void> emptyTrash() async {
     try {
@@ -43,7 +41,5 @@ class TrashNotifier extends StateNotifier<bool> {
 }
 
 final trashProvider = StateNotifierProvider<TrashNotifier, bool>((ref) {
-  return TrashNotifier(
-    ref.watch(trashServiceProvider),
-  );
+  return TrashNotifier(ref.watch(trashServiceProvider));
 });

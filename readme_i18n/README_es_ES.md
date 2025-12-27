@@ -27,7 +27,8 @@
   <a href="README_de_DE.md">Deutsch</a>
   <a href="README_nl_NL.md">Nederlands</a>
   <a href="README_tr_TR.md">Türkçe</a>
-  <a href="README_zh_CN.md">中文</a>
+  <a href="README_zh_CN.md">简体中文</a>
+  <a href="README_zh_TW.md">正體中文</a>
   <a href="README_uk_UA.md">Українська</a>
   <a href="README_ru_RU.md">Русский</a>
   <a href="README_pt_BR.md">Português Brasileiro</a>
@@ -45,13 +46,13 @@
 
 ## Contenido
 
-- [Documentación oficial](https://immich.app/docs)
+- [Documentación oficial](https://docs.immich.app)
 - [Hoja de ruta](https://github.com/orgs/immich-app/projects/1)
 - [Demo](#demo)
 - [Funciones](#funciones)
-- [Introducción](https://immich.app/docs/overview/introduction)
-- [Instalación](https://immich.app/docs/install/requirements)
-- [Directrices para contribuir](https://immich.app/docs/overview/support-the-project)
+- [Introducción](https://docs.immich.app/overview/introduction)
+- [Instalación](https://docs.immich.app/install/requirements)
+- [Directrices para contribuir](https://docs.immich.app/overview/support-the-project)
 
 ## Documentación
 
@@ -59,18 +60,12 @@ Puedes encontrar la documentación oficial, incluidas las guías de instalación
 
 ## Demo
 
-Puedes acceder a la demostración web en <https://demo.immich.app>
-
-Para la aplicación móvil, puedes usar `https://demo.immich.app/api` en la `URL del servidor`.
+Puedes acceder a la demostración web en <https://demo.immich.app>. Para la aplicación móvil, puedes usar `https://demo.immich.app` en la `URL del servidor`.
 
 ```bash title="Credenciales de la demo"
 Credenciales
 correo: demo@immich.app
 contraseña: demo
-```
-
-```bash
-Especificaciones: Una VM de nivel gratuito de Oracle - Ámsterdam - CPU ARM64 de cuatro núcleos a 2.4 GHz, 24 GB de RAM
 ```
 
 ## Funciones
@@ -105,7 +100,7 @@ Especificaciones: Una VM de nivel gratuito de Oracle - Ámsterdam - CPU ARM64 de
 
 ## Traducciones
 
-Lea mas acerca de las traducciones [acá](https://immich.app/docs/developer/translations).
+Lea mas acerca de las traducciones [acá](https://docs.immich.app/developer/translations).
 
 <a href="https://hosted.weblate.org/engage/immich/">
 <img src="https://hosted.weblate.org/widget/immich/immich/multi-auto.svg" alt="Translation status" />

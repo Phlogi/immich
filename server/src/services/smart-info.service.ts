@@ -2,29 +2,26 @@ import { Injectable } from '@nestjs/common';
 import { SystemConfig } from 'src/config';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { OnEvent, OnJob } from 'src/decorators';
-import { DatabaseLock, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum';
-import { WithoutProperty } from 'src/repositories/asset.repository';
+import { AssetVisibility, DatabaseLock, ImmichWorker, JobName, JobStatus, QueueName } from 'src/enum';
 import { ArgOf } from 'src/repositories/event.repository';
 import { BaseService } from 'src/services/base.service';
-import { JobOf } from 'src/types';
-import { getAssetFiles } from 'src/utils/asset.util';
+import { JobItem, JobOf } from 'src/types';
 import { getCLIPModelInfo, isSmartSearchEnabled } from 'src/utils/misc';
-import { usePagination } from 'src/utils/pagination';
 
 @Injectable()
 export class SmartInfoService extends BaseService {
-  @OnEvent({ name: 'config.init', workers: [ImmichWorker.MICROSERVICES] })
-  async onConfigInit({ newConfig }: ArgOf<'config.init'>) {
+  @OnEvent({ name: 'ConfigInit', workers: [ImmichWorker.Microservices] })
+  async onConfigInit({ newConfig }: ArgOf<'ConfigInit'>) {
     await this.init(newConfig);
   }
 
-  @OnEvent({ name: 'config.update', workers: [ImmichWorker.MICROSERVICES], server: true })
-  async onConfigUpdate({ oldConfig, newConfig }: ArgOf<'config.update'>) {
+  @OnEvent({ name: 'ConfigUpdate', workers: [ImmichWorker.Microservices], server: true })
+  async onConfigUpdate({ oldConfig, newConfig }: ArgOf<'ConfigUpdate'>) {
     await this.init(newConfig, oldConfig);
   }
 
-  @OnEvent({ name: 'config.validate' })
-  onConfigValidate({ newConfig }: ArgOf<'config.validate'>) {
+  @OnEvent({ name: 'ConfigValidate' })
+  onConfigValidate({ newConfig }: ArgOf<'ConfigValidate'>) {
     try {
       getCLIPModelInfo(newConfig.machineLearning.clip.modelName);
     } catch {
@@ -41,7 +38,7 @@ export class SmartInfoService extends BaseService {
 
     await this.databaseRepository.withLock(DatabaseLock.CLIPDimSize, async () => {
       const { dimSize } = getCLIPModelInfo(newConfig.machineLearning.clip.modelName);
-      const dbDimSize = await this.searchRepository.getDimensionSize();
+      const dbDimSize = await this.databaseRepository.getDimensionSize('smart_search');
       this.logger.verbose(`Current database CLIP dimension size is ${dbDimSize}`);
 
       const modelChange =
@@ -51,89 +48,81 @@ export class SmartInfoService extends BaseService {
         return;
       }
 
-      const { isPaused } = await this.jobRepository.getQueueStatus(QueueName.SMART_SEARCH);
-      if (!isPaused) {
-        await this.jobRepository.pause(QueueName.SMART_SEARCH);
-      }
-      await this.jobRepository.waitForQueueCompletion(QueueName.SMART_SEARCH);
-
       if (dimSizeChange) {
         this.logger.log(
           `Dimension size of model ${newConfig.machineLearning.clip.modelName} is ${dimSize}, but database expects ${dbDimSize}.`,
         );
         this.logger.log(`Updating database CLIP dimension size to ${dimSize}.`);
-        await this.searchRepository.setDimensionSize(dimSize);
+        await this.databaseRepository.setDimensionSize(dimSize);
         this.logger.log(`Successfully updated database CLIP dimension size from ${dbDimSize} to ${dimSize}.`);
       } else {
-        await this.searchRepository.deleteAllSearchEmbeddings();
+        await this.databaseRepository.deleteAllSearchEmbeddings();
       }
 
-      if (!isPaused) {
-        await this.jobRepository.resume(QueueName.SMART_SEARCH);
-      }
+      // TODO: A job to reindex all assets should be scheduled, though user
+      // confirmation should probably be requested before doing that.
     });
   }
 
-  @OnJob({ name: JobName.QUEUE_SMART_SEARCH, queue: QueueName.SMART_SEARCH })
-  async handleQueueEncodeClip({ force }: JobOf<JobName.QUEUE_SMART_SEARCH>): Promise<JobStatus> {
+  @OnJob({ name: JobName.SmartSearchQueueAll, queue: QueueName.SmartSearch })
+  async handleQueueEncodeClip({ force }: JobOf<JobName.SmartSearchQueueAll>): Promise<JobStatus> {
     const { machineLearning } = await this.getConfig({ withCache: false });
     if (!isSmartSearchEnabled(machineLearning)) {
-      return JobStatus.SKIPPED;
+      return JobStatus.Skipped;
     }
 
     if (force) {
-      await this.searchRepository.deleteAllSearchEmbeddings();
+      const { dimSize } = getCLIPModelInfo(machineLearning.clip.modelName);
+      // in addition to deleting embeddings, update the dimension size in case it failed earlier
+      await this.databaseRepository.setDimensionSize(dimSize);
     }
 
-    const assetPagination = usePagination(JOBS_ASSET_PAGINATION_SIZE, (pagination) => {
-      return force
-        ? this.assetRepository.getAll(pagination, { isVisible: true })
-        : this.assetRepository.getWithout(pagination, WithoutProperty.SMART_SEARCH);
-    });
-
-    for await (const assets of assetPagination) {
-      await this.jobRepository.queueAll(
-        assets.map((asset) => ({ name: JobName.SMART_SEARCH, data: { id: asset.id } })),
-      );
+    let queue: JobItem[] = [];
+    const assets = this.assetJobRepository.streamForEncodeClip(force);
+    for await (const asset of assets) {
+      queue.push({ name: JobName.SmartSearch, data: { id: asset.id } });
+      if (queue.length >= JOBS_ASSET_PAGINATION_SIZE) {
+        await this.jobRepository.queueAll(queue);
+        queue = [];
+      }
     }
 
-    return JobStatus.SUCCESS;
+    await this.jobRepository.queueAll(queue);
+
+    return JobStatus.Success;
   }
 
-  @OnJob({ name: JobName.SMART_SEARCH, queue: QueueName.SMART_SEARCH })
-  async handleEncodeClip({ id }: JobOf<JobName.SMART_SEARCH>): Promise<JobStatus> {
+  @OnJob({ name: JobName.SmartSearch, queue: QueueName.SmartSearch })
+  async handleEncodeClip({ id }: JobOf<JobName.SmartSearch>): Promise<JobStatus> {
     const { machineLearning } = await this.getConfig({ withCache: true });
     if (!isSmartSearchEnabled(machineLearning)) {
-      return JobStatus.SKIPPED;
+      return JobStatus.Skipped;
     }
 
-    const [asset] = await this.assetRepository.getByIds([id], { files: true });
-    if (!asset) {
-      return JobStatus.FAILED;
+    const asset = await this.assetJobRepository.getForClipEncoding(id);
+    if (!asset || asset.files.length !== 1) {
+      return JobStatus.Failed;
     }
 
-    if (!asset.isVisible) {
-      return JobStatus.SKIPPED;
+    if (asset.visibility === AssetVisibility.Hidden) {
+      return JobStatus.Skipped;
     }
 
-    const { previewFile } = getAssetFiles(asset.files);
-    if (!previewFile) {
-      return JobStatus.FAILED;
-    }
-
-    const embedding = await this.machineLearningRepository.encodeImage(
-      machineLearning.urls,
-      previewFile.path,
-      machineLearning.clip,
-    );
+    const embedding = await this.machineLearningRepository.encodeImage(asset.files[0].path, machineLearning.clip);
 
     if (this.databaseRepository.isBusy(DatabaseLock.CLIPDimSize)) {
       this.logger.verbose(`Waiting for CLIP dimension size to be updated`);
       await this.databaseRepository.wait(DatabaseLock.CLIPDimSize);
     }
 
+    const newConfig = await this.getConfig({ withCache: true });
+    if (machineLearning.clip.modelName !== newConfig.machineLearning.clip.modelName) {
+      // Skip the job if the the model has changed since the embedding was generated.
+      return JobStatus.Skipped;
+    }
+
     await this.searchRepository.upsert(asset.id, embedding);
 
-    return JobStatus.SUCCESS;
+    return JobStatus.Success;
   }
 }

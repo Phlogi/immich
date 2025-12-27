@@ -26,24 +26,14 @@ final _activities = [
     comment: 'Second Activity',
     user: UserStub.user1,
   ),
-  Activity(
-    id: '3',
-    createdAt: DateTime(300),
-    type: ActivityType.like,
-    assetId: 'asset-1',
-    user: UserStub.admin,
-  ),
-  Activity(
-    id: '4',
-    createdAt: DateTime(400),
-    type: ActivityType.like,
-    user: UserStub.user1,
-  ),
+  Activity(id: '3', createdAt: DateTime(300), type: ActivityType.like, assetId: 'asset-1', user: UserStub.admin),
+  Activity(id: '4', createdAt: DateTime(400), type: ActivityType.like, user: UserStub.user1),
 ];
 
 void main() {
   late ActivityServiceMock activityMock;
   late ActivityStatisticsMock activityStatisticsMock;
+  late ActivityStatisticsMock albumActivityStatisticsMock;
   late ProviderContainer container;
   late AlbumActivityProvider provider;
   late ListenerMock<AsyncValue<List<Activity>>> listener;
@@ -55,27 +45,28 @@ void main() {
   setUp(() async {
     activityMock = ActivityServiceMock();
     activityStatisticsMock = ActivityStatisticsMock();
+    albumActivityStatisticsMock = ActivityStatisticsMock();
+
     container = TestUtils.createContainer(
       overrides: [
         activityServiceProvider.overrideWith((ref) => activityMock),
-        activityStatisticsProvider('test-album', 'test-asset')
-            .overrideWith(() => activityStatisticsMock),
+        activityStatisticsProvider('test-album', 'test-asset').overrideWith(() => activityStatisticsMock),
+        activityStatisticsProvider('test-album').overrideWith(() => albumActivityStatisticsMock),
       ],
     );
 
     // Mock values
+    when(() => activityStatisticsMock.build(any(), any())).thenReturn(0);
+    when(() => albumActivityStatisticsMock.build(any())).thenReturn(0);
     when(
       () => activityMock.getAllActivities('test-album', assetId: 'test-asset'),
     ).thenAnswer((_) async => [..._activities]);
+    when(() => activityMock.getAllActivities('test-album')).thenAnswer((_) async => [..._activities]);
 
     // Init and wait for providers future to complete
     provider = albumActivityProvider('test-album', 'test-asset');
     listener = ListenerMock();
-    container.listen(
-      provider,
-      listener.call,
-      fireImmediately: true,
-    );
+    container.listen(provider, listener.call, fireImmediately: true);
 
     await container.read(provider.future);
   });
@@ -84,19 +75,14 @@ void main() {
     verifyInOrder([
       () => listener.call(null, const AsyncLoading()),
       () => listener.call(
-            const AsyncLoading(),
-            any(
-              that: allOf(
-                [
-                  isA<AsyncData<List<Activity>>>(),
-                  predicate(
-                    (AsyncData<List<Activity>> ad) =>
-                        ad.requireValue.every((e) => _activities.contains(e)),
-                  ),
-                ],
-              ),
-            ),
-          ),
+        const AsyncLoading(),
+        any(
+          that: allOf([
+            isA<AsyncData<List<Activity>>>(),
+            predicate((AsyncData<List<Activity>> ad) => ad.requireValue.every((e) => _activities.contains(e))),
+          ]),
+        ),
+      ),
     ]);
 
     verifyNoMoreInteractions(listener);
@@ -104,30 +90,19 @@ void main() {
 
   group('addLike()', () {
     test('Like successfully added', () async {
-      final like = Activity(
-        id: '5',
-        createdAt: DateTime(2023),
-        type: ActivityType.like,
-        user: UserStub.admin,
-      );
+      final like = Activity(id: '5', createdAt: DateTime(2023), type: ActivityType.like, user: UserStub.admin);
 
       when(
-        () => activityMock.addActivity(
-          'test-album',
-          ActivityType.like,
-          assetId: 'test-asset',
-        ),
+        () => activityMock.addActivity('test-album', ActivityType.like, assetId: 'test-asset'),
       ).thenAnswer((_) async => AsyncData(like));
+
+      final albumProvider = albumActivityProvider('test-album');
+      container.read(albumProvider.notifier);
+      await container.read(albumProvider.future);
 
       await container.read(provider.notifier).addLike();
 
-      verify(
-        () => activityMock.addActivity(
-          'test-album',
-          ActivityType.like,
-          assetId: 'test-asset',
-        ),
-      );
+      verify(() => activityMock.addActivity('test-album', ActivityType.like, assetId: 'test-asset'));
 
       final activities = await container.read(provider.future);
       expect(activities, hasLength(5));
@@ -135,108 +110,106 @@ void main() {
 
       // Never bump activity count for new likes
       verifyNever(() => activityStatisticsMock.addActivity());
+      verifyNever(() => albumActivityStatisticsMock.addActivity());
+
+      final albumActivities = container.read(albumProvider).requireValue;
+      expect(albumActivities, hasLength(5));
+      expect(albumActivities, contains(like));
     });
 
     test('Like failed', () async {
-      final like = Activity(
-        id: '5',
-        createdAt: DateTime(2023),
-        type: ActivityType.like,
-        user: UserStub.admin,
-      );
+      final like = Activity(id: '5', createdAt: DateTime(2023), type: ActivityType.like, user: UserStub.admin);
       when(
-        () => activityMock.addActivity(
-          'test-album',
-          ActivityType.like,
-          assetId: 'test-asset',
-        ),
-      ).thenAnswer(
-        (_) async => AsyncError(Exception('Mock'), StackTrace.current),
-      );
+        () => activityMock.addActivity('test-album', ActivityType.like, assetId: 'test-asset'),
+      ).thenAnswer((_) async => AsyncError(Exception('Mock'), StackTrace.current));
+
+      final albumProvider = albumActivityProvider('test-album');
+      container.read(albumProvider.notifier);
+      await container.read(albumProvider.future);
 
       await container.read(provider.notifier).addLike();
 
-      verify(
-        () => activityMock.addActivity(
-          'test-album',
-          ActivityType.like,
-          assetId: 'test-asset',
-        ),
-      );
+      verify(() => activityMock.addActivity('test-album', ActivityType.like, assetId: 'test-asset'));
 
       final activities = await container.read(provider.future);
       expect(activities, hasLength(4));
       expect(activities, isNot(contains(like)));
+
+      verifyNever(() => albumActivityStatisticsMock.addActivity());
+
+      final albumActivities = container.read(albumProvider).requireValue;
+      expect(albumActivities, hasLength(4));
+      expect(albumActivities, isNot(contains(like)));
     });
   });
 
   group('removeActivity()', () {
     test('Like successfully removed', () async {
-      when(() => activityMock.removeActivity('3'))
-          .thenAnswer((_) async => true);
+      when(() => activityMock.removeActivity('3')).thenAnswer((_) async => true);
 
       await container.read(provider.notifier).removeActivity('3');
 
-      verify(
-        () => activityMock.removeActivity('3'),
-      );
+      verify(() => activityMock.removeActivity('3'));
 
       final activities = await container.read(provider.future);
       expect(activities, hasLength(3));
-      expect(
-        activities,
-        isNot(anyElement(predicate((Activity a) => a.id == '3'))),
-      );
+      expect(activities, isNot(anyElement(predicate((Activity a) => a.id == '3'))));
 
       verifyNever(() => activityStatisticsMock.removeActivity());
+      verifyNever(() => albumActivityStatisticsMock.removeActivity());
     });
 
     test('Remove Like failed', () async {
-      when(() => activityMock.removeActivity('3'))
-          .thenAnswer((_) async => false);
+      when(() => activityMock.removeActivity('3')).thenAnswer((_) async => false);
 
       await container.read(provider.notifier).removeActivity('3');
 
       final activities = await container.read(provider.future);
       expect(activities, hasLength(4));
-      expect(
-        activities,
-        anyElement(predicate((Activity a) => a.id == '3')),
-      );
+      expect(activities, anyElement(predicate((Activity a) => a.id == '3')));
+
+      verifyNever(() => activityStatisticsMock.removeActivity());
+      verifyNever(() => albumActivityStatisticsMock.removeActivity());
     });
 
     test('Comment successfully removed', () async {
-      when(() => activityMock.removeActivity('1'))
-          .thenAnswer((_) async => true);
+      when(() => activityMock.removeActivity('1')).thenAnswer((_) async => true);
 
       await container.read(provider.notifier).removeActivity('1');
 
       final activities = await container.read(provider.future);
-      expect(
-        activities,
-        isNot(anyElement(predicate((Activity a) => a.id == '1'))),
-      );
+      expect(activities, isNot(anyElement(predicate((Activity a) => a.id == '1'))));
 
       verify(() => activityStatisticsMock.removeActivity());
+      verify(() => albumActivityStatisticsMock.removeActivity());
+    });
+
+    test('Removes activity from album state when asset scoped', () async {
+      when(() => activityMock.removeActivity('3')).thenAnswer((_) async => true);
+      when(() => activityMock.getAllActivities('test-album')).thenAnswer((_) async => [..._activities]);
+
+      final albumProvider = albumActivityProvider('test-album');
+      container.read(albumProvider.notifier);
+      await container.read(albumProvider.future);
+
+      await container.read(provider.notifier).removeActivity('3');
+
+      final assetActivities = container.read(provider).requireValue;
+      final albumActivities = container.read(albumProvider).requireValue;
+
+      expect(assetActivities, hasLength(3));
+      expect(assetActivities, isNot(anyElement(predicate((Activity a) => a.id == '3'))));
+
+      expect(albumActivities, hasLength(3));
+      expect(albumActivities, isNot(anyElement(predicate((Activity a) => a.id == '3'))));
+
+      verify(() => activityMock.removeActivity('3'));
+      verifyNever(() => activityStatisticsMock.removeActivity());
+      verifyNever(() => albumActivityStatisticsMock.removeActivity());
     });
   });
 
   group('addComment()', () {
-    late ActivityStatisticsMock albumActivityStatisticsMock;
-
-    setUp(() {
-      albumActivityStatisticsMock = ActivityStatisticsMock();
-      container = TestUtils.createContainer(
-        overrides: [
-          activityServiceProvider.overrideWith((ref) => activityMock),
-          activityStatisticsProvider('test-album', 'test-asset')
-              .overrideWith(() => activityStatisticsMock),
-          activityStatisticsProvider('test-album')
-              .overrideWith(() => albumActivityStatisticsMock),
-        ],
-      );
-    });
-
     test('Comment successfully added', () async {
       final comment = Activity(
         id: '5',
@@ -247,6 +220,10 @@ void main() {
         assetId: 'test-asset',
       );
 
+      final albumProvider = albumActivityProvider('test-album');
+      container.read(albumProvider.notifier);
+      await container.read(albumProvider.future);
+
       when(
         () => activityMock.addActivity(
           'test-album',
@@ -255,8 +232,7 @@ void main() {
           comment: 'Test-Comment',
         ),
       ).thenAnswer((_) async => AsyncData(comment));
-      when(() => activityStatisticsMock.build('test-album', 'test-asset'))
-          .thenReturn(4);
+      when(() => activityStatisticsMock.build('test-album', 'test-asset')).thenReturn(4);
       when(() => albumActivityStatisticsMock.build('test-album')).thenReturn(2);
 
       await container.read(provider.notifier).addComment('Test-Comment');
@@ -276,6 +252,10 @@ void main() {
 
       verify(() => activityStatisticsMock.addActivity());
       verify(() => albumActivityStatisticsMock.addActivity());
+
+      final albumActivities = container.read(albumProvider).requireValue;
+      expect(albumActivities, hasLength(5));
+      expect(albumActivities, contains(comment));
     });
 
     test('Comment successfully added without assetId', () async {
@@ -289,26 +269,18 @@ void main() {
       );
 
       when(
-        () => activityMock.addActivity(
-          'test-album',
-          ActivityType.comment,
-          comment: 'Test-Comment',
-        ),
+        () => activityMock.addActivity('test-album', ActivityType.comment, comment: 'Test-Comment'),
       ).thenAnswer((_) async => AsyncData(comment));
       when(() => albumActivityStatisticsMock.build('test-album')).thenReturn(2);
-      when(() => activityMock.getAllActivities('test-album'))
-          .thenAnswer((_) async => [..._activities]);
+      when(() => activityMock.getAllActivities('test-album')).thenAnswer((_) async => [..._activities]);
 
       final albumProvider = albumActivityProvider('test-album');
+      container.read(albumProvider.notifier);
+      await container.read(albumProvider.future);
       await container.read(albumProvider.notifier).addComment('Test-Comment');
 
       verify(
-        () => activityMock.addActivity(
-          'test-album',
-          ActivityType.comment,
-          assetId: null,
-          comment: 'Test-Comment',
-        ),
+        () => activityMock.addActivity('test-album', ActivityType.comment, assetId: null, comment: 'Test-Comment'),
       );
 
       final activities = await container.read(albumProvider.future);
@@ -336,9 +308,11 @@ void main() {
           assetId: 'test-asset',
           comment: 'Test-Comment',
         ),
-      ).thenAnswer(
-        (_) async => AsyncError(Exception('Error'), StackTrace.current),
-      );
+      ).thenAnswer((_) async => AsyncError(Exception('Error'), StackTrace.current));
+
+      final albumProvider = albumActivityProvider('test-album');
+      container.read(albumProvider.notifier);
+      await container.read(albumProvider.future);
 
       await container.read(provider.notifier).addComment('Test-Comment');
 
@@ -348,6 +322,10 @@ void main() {
 
       verifyNever(() => activityStatisticsMock.addActivity());
       verifyNever(() => albumActivityStatisticsMock.addActivity());
+
+      final albumActivities = container.read(albumProvider).requireValue;
+      expect(albumActivities, hasLength(4));
+      expect(albumActivities, isNot(contains(comment)));
     });
   });
 }

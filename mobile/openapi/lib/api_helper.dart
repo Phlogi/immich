@@ -67,14 +67,23 @@ String parameterToString(dynamic value) {
   if (value is AssetMediaStatus) {
     return AssetMediaStatusTypeTransformer().encode(value).toString();
   }
+  if (value is AssetMetadataKey) {
+    return AssetMetadataKeyTypeTransformer().encode(value).toString();
+  }
   if (value is AssetOrder) {
     return AssetOrderTypeTransformer().encode(value).toString();
   }
   if (value is AssetTypeEnum) {
     return AssetTypeEnumTypeTransformer().encode(value).toString();
   }
+  if (value is AssetVisibility) {
+    return AssetVisibilityTypeTransformer().encode(value).toString();
+  }
   if (value is AudioCodec) {
     return AudioCodecTypeTransformer().encode(value).toString();
+  }
+  if (value is BulkIdErrorReason) {
+    return BulkIdErrorReasonTypeTransformer().encode(value).toString();
   }
   if (value is CQMode) {
     return CQModeTypeTransformer().encode(value).toString();
@@ -85,32 +94,53 @@ String parameterToString(dynamic value) {
   if (value is ImageFormat) {
     return ImageFormatTypeTransformer().encode(value).toString();
   }
-  if (value is JobCommand) {
-    return JobCommandTypeTransformer().encode(value).toString();
-  }
   if (value is JobName) {
     return JobNameTypeTransformer().encode(value).toString();
   }
   if (value is LogLevel) {
     return LogLevelTypeTransformer().encode(value).toString();
   }
+  if (value is MaintenanceAction) {
+    return MaintenanceActionTypeTransformer().encode(value).toString();
+  }
   if (value is ManualJobName) {
     return ManualJobNameTypeTransformer().encode(value).toString();
+  }
+  if (value is MemorySearchOrder) {
+    return MemorySearchOrderTypeTransformer().encode(value).toString();
   }
   if (value is MemoryType) {
     return MemoryTypeTypeTransformer().encode(value).toString();
   }
+  if (value is NotificationLevel) {
+    return NotificationLevelTypeTransformer().encode(value).toString();
+  }
+  if (value is NotificationType) {
+    return NotificationTypeTypeTransformer().encode(value).toString();
+  }
+  if (value is OAuthTokenEndpointAuthMethod) {
+    return OAuthTokenEndpointAuthMethodTypeTransformer().encode(value).toString();
+  }
   if (value is PartnerDirection) {
     return PartnerDirectionTypeTransformer().encode(value).toString();
   }
-  if (value is PathEntityType) {
-    return PathEntityTypeTypeTransformer().encode(value).toString();
-  }
-  if (value is PathType) {
-    return PathTypeTypeTransformer().encode(value).toString();
-  }
   if (value is Permission) {
     return PermissionTypeTransformer().encode(value).toString();
+  }
+  if (value is PluginContextType) {
+    return PluginContextTypeTypeTransformer().encode(value).toString();
+  }
+  if (value is PluginTriggerType) {
+    return PluginTriggerTypeTypeTransformer().encode(value).toString();
+  }
+  if (value is QueueCommand) {
+    return QueueCommandTypeTransformer().encode(value).toString();
+  }
+  if (value is QueueJobStatus) {
+    return QueueJobStatusTypeTransformer().encode(value).toString();
+  }
+  if (value is QueueName) {
+    return QueueNameTypeTransformer().encode(value).toString();
   }
   if (value is ReactionLevel) {
     return ReactionLevelTypeTransformer().encode(value).toString();
@@ -133,9 +163,6 @@ String parameterToString(dynamic value) {
   if (value is SyncRequestType) {
     return SyncRequestTypeTypeTransformer().encode(value).toString();
   }
-  if (value is TimeBucketSize) {
-    return TimeBucketSizeTypeTransformer().encode(value).toString();
-  }
   if (value is ToneMapping) {
     return ToneMappingTypeTransformer().encode(value).toString();
   }
@@ -147,6 +174,9 @@ String parameterToString(dynamic value) {
   }
   if (value is UserAvatarColor) {
     return UserAvatarColorTypeTransformer().encode(value).toString();
+  }
+  if (value is UserMetadataKey) {
+    return UserMetadataKeyTypeTransformer().encode(value).toString();
   }
   if (value is UserStatus) {
     return UserStatusTypeTransformer().encode(value).toString();

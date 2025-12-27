@@ -1,7 +1,7 @@
 import BackgroundTasks
 import Flutter
 import network_info_plus
-import path_provider_ios
+import path_provider_foundation
 import permission_handler_apple
 import photo_manager
 import shared_preferences_foundation
@@ -18,21 +18,17 @@ import UIKit
       UNUserNotificationCenter.current().delegate = self as? UNUserNotificationCenterDelegate
     }
 
-    do {
-      try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-      try AVAudioSession.sharedInstance().setActive(true)
-    } catch {
-      print("Failed to set audio session category. Error: \(error)")
-    }
-
     GeneratedPluginRegistrant.register(with: self)
-    BackgroundServicePlugin.registerBackgroundProcessing()
-
+    let controller: FlutterViewController = window?.rootViewController as! FlutterViewController
+    AppDelegate.registerPlugins(with: controller.engine)
     BackgroundServicePlugin.register(with: self.registrar(forPlugin: "BackgroundServicePlugin")!)
 
+    BackgroundServicePlugin.registerBackgroundProcessing()
+    BackgroundWorkerApiImpl.registerBackgroundWorkers()
+
     BackgroundServicePlugin.setPluginRegistrantCallback { registry in
-      if !registry.hasPlugin("org.cocoapods.path-provider-ios") {
-        FLTPathProviderPlugin.register(with: registry.registrar(forPlugin: "org.cocoapods.path-provider-ios")!)
+      if !registry.hasPlugin("org.cocoapods.path-provider-foundation") {
+        PathProviderPlugin.register(with: registry.registrar(forPlugin: "org.cocoapods.path-provider-foundation")!)
       }
 
       if !registry.hasPlugin("org.cocoapods.photo-manager") {
@@ -53,5 +49,15 @@ import UIKit
     }
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+  
+  public static func registerPlugins(with engine: FlutterEngine) {
+    NativeSyncApiImpl.register(with: engine.registrar(forPlugin: NativeSyncApiImpl.name)!)
+    ThumbnailApiSetup.setUp(binaryMessenger: engine.binaryMessenger, api: ThumbnailApiImpl())
+    BackgroundWorkerFgHostApiSetup.setUp(binaryMessenger: engine.binaryMessenger, api: BackgroundWorkerApiImpl())
+  }
+  
+  public static func cancelPlugins(with engine: FlutterEngine) {
+    (engine.valuePublished(byPlugin: NativeSyncApiImpl.name) as? NativeSyncApiImpl)?.detachFromEngine()
   }
 }

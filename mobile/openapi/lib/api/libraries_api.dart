@@ -16,13 +16,18 @@ class LibrariesApi {
 
   final ApiClient apiClient;
 
-  /// Performs an HTTP 'POST /libraries' operation and returns the [Response].
+  /// Create a library
+  ///
+  /// Create a new external library.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [CreateLibraryDto] createLibraryDto (required):
   Future<Response> createLibraryWithHttpInfo(CreateLibraryDto createLibraryDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries';
+    final apiPath = r'/libraries';
 
     // ignore: prefer_final_locals
     Object? postBody = createLibraryDto;
@@ -35,7 +40,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -45,6 +50,10 @@ class LibrariesApi {
     );
   }
 
+  /// Create a library
+  ///
+  /// Create a new external library.
+  ///
   /// Parameters:
   ///
   /// * [CreateLibraryDto] createLibraryDto (required):
@@ -63,13 +72,18 @@ class LibrariesApi {
     return null;
   }
 
-  /// Performs an HTTP 'DELETE /libraries/{id}' operation and returns the [Response].
+  /// Delete a library
+  ///
+  /// Delete an external library by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> deleteLibraryWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries/{id}'
+    final apiPath = r'/libraries/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -83,7 +97,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'DELETE',
       queryParams,
       postBody,
@@ -93,6 +107,10 @@ class LibrariesApi {
     );
   }
 
+  /// Delete a library
+  ///
+  /// Delete an external library by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -103,10 +121,14 @@ class LibrariesApi {
     }
   }
 
-  /// Performs an HTTP 'GET /libraries' operation and returns the [Response].
+  /// Retrieve libraries
+  ///
+  /// Retrieve a list of external libraries.
+  ///
+  /// Note: This method returns the HTTP [Response].
   Future<Response> getAllLibrariesWithHttpInfo() async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries';
+    final apiPath = r'/libraries';
 
     // ignore: prefer_final_locals
     Object? postBody;
@@ -119,7 +141,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -129,6 +151,9 @@ class LibrariesApi {
     );
   }
 
+  /// Retrieve libraries
+  ///
+  /// Retrieve a list of external libraries.
   Future<List<LibraryResponseDto>?> getAllLibraries() async {
     final response = await getAllLibrariesWithHttpInfo();
     if (response.statusCode >= HttpStatus.badRequest) {
@@ -147,13 +172,18 @@ class LibrariesApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /libraries/{id}' operation and returns the [Response].
+  /// Retrieve a library
+  ///
+  /// Retrieve an external library by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> getLibraryWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries/{id}'
+    final apiPath = r'/libraries/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -167,7 +197,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -177,6 +207,10 @@ class LibrariesApi {
     );
   }
 
+  /// Retrieve a library
+  ///
+  /// Retrieve an external library by its ID.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -195,13 +229,18 @@ class LibrariesApi {
     return null;
   }
 
-  /// Performs an HTTP 'GET /libraries/{id}/statistics' operation and returns the [Response].
+  /// Retrieve library statistics
+  ///
+  /// Retrieve statistics for a specific external library, including number of videos, images, and storage usage.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> getLibraryStatisticsWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries/{id}/statistics'
+    final apiPath = r'/libraries/{id}/statistics'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -215,7 +254,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'GET',
       queryParams,
       postBody,
@@ -225,6 +264,10 @@ class LibrariesApi {
     );
   }
 
+  /// Retrieve library statistics
+  ///
+  /// Retrieve statistics for a specific external library, including number of videos, images, and storage usage.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -243,13 +286,18 @@ class LibrariesApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /libraries/{id}/scan' operation and returns the [Response].
+  /// Scan a library
+  ///
+  /// Queue a scan for the external library to find and import new assets.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
   Future<Response> scanLibraryWithHttpInfo(String id,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries/{id}/scan'
+    final apiPath = r'/libraries/{id}/scan'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -263,7 +311,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -273,6 +321,10 @@ class LibrariesApi {
     );
   }
 
+  /// Scan a library
+  ///
+  /// Queue a scan for the external library to find and import new assets.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -283,7 +335,12 @@ class LibrariesApi {
     }
   }
 
-  /// Performs an HTTP 'PUT /libraries/{id}' operation and returns the [Response].
+  /// Update a library
+  ///
+  /// Update an existing external library.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -291,7 +348,7 @@ class LibrariesApi {
   /// * [UpdateLibraryDto] updateLibraryDto (required):
   Future<Response> updateLibraryWithHttpInfo(String id, UpdateLibraryDto updateLibraryDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries/{id}'
+    final apiPath = r'/libraries/{id}'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -305,7 +362,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'PUT',
       queryParams,
       postBody,
@@ -315,6 +372,10 @@ class LibrariesApi {
     );
   }
 
+  /// Update a library
+  ///
+  /// Update an existing external library.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -335,7 +396,12 @@ class LibrariesApi {
     return null;
   }
 
-  /// Performs an HTTP 'POST /libraries/{id}/validate' operation and returns the [Response].
+  /// Validate library settings
+  ///
+  /// Validate the settings of an external library.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):
@@ -343,7 +409,7 @@ class LibrariesApi {
   /// * [ValidateLibraryDto] validateLibraryDto (required):
   Future<Response> validateWithHttpInfo(String id, ValidateLibraryDto validateLibraryDto,) async {
     // ignore: prefer_const_declarations
-    final path = r'/libraries/{id}/validate'
+    final apiPath = r'/libraries/{id}/validate'
       .replaceAll('{id}', id);
 
     // ignore: prefer_final_locals
@@ -357,7 +423,7 @@ class LibrariesApi {
 
 
     return apiClient.invokeAPI(
-      path,
+      apiPath,
       'POST',
       queryParams,
       postBody,
@@ -367,6 +433,10 @@ class LibrariesApi {
     );
   }
 
+  /// Validate library settings
+  ///
+  /// Validate the settings of an external library.
+  ///
   /// Parameters:
   ///
   /// * [String] id (required):

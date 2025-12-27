@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:immich_mobile/domain/models/store.model.dart';
 import 'package:immich_mobile/entities/store.entity.dart';
+import 'package:immich_mobile/utils/debug_print.dart';
 import 'package:immich_mobile/utils/url_helper.dart';
+import 'package:immich_mobile/utils/user_agent.dart';
 import 'package:logging/logging.dart';
 import 'package:openapi/api.dart';
 
@@ -16,7 +17,7 @@ class ApiService implements Authentication {
 
   late UsersApi usersApi;
   late AuthenticationApi authenticationApi;
-  late OAuthApi oAuthApi;
+  late AuthenticationApi oAuthApi;
   late AlbumsApi albumsApi;
   late AssetsApi assetsApi;
   late SearchApi searchApi;
@@ -31,9 +32,14 @@ class ApiService implements Authentication {
   late DownloadApi downloadApi;
   late TrashApi trashApi;
   late StacksApi stacksApi;
+  late ViewsApi viewApi;
   late MemoriesApi memoriesApi;
+  late SessionsApi sessionsApi;
 
   ApiService() {
+    // The below line ensures that the api clients are initialized when the service is instantiated
+    // This is required to avoid late initialization errors when the clients are access before the endpoint is resolved
+    setEndpoint('');
     final endpoint = Store.tryGet(StoreKey.serverEndpoint);
     if (endpoint != null && endpoint.isNotEmpty) {
       setEndpoint(endpoint);
@@ -44,12 +50,13 @@ class ApiService implements Authentication {
 
   setEndpoint(String endpoint) {
     _apiClient = ApiClient(basePath: endpoint, authentication: this);
+    _setUserAgentHeader();
     if (_accessToken != null) {
       setAccessToken(_accessToken!);
     }
     usersApi = UsersApi(_apiClient);
     authenticationApi = AuthenticationApi(_apiClient);
-    oAuthApi = OAuthApi(_apiClient);
+    oAuthApi = AuthenticationApi(_apiClient);
     albumsApi = AlbumsApi(_apiClient);
     assetsApi = AssetsApi(_apiClient);
     serverInfoApi = ServerApi(_apiClient);
@@ -64,7 +71,14 @@ class ApiService implements Authentication {
     downloadApi = DownloadApi(_apiClient);
     trashApi = TrashApi(_apiClient);
     stacksApi = StacksApi(_apiClient);
+    viewApi = ViewsApi(_apiClient);
     memoriesApi = MemoriesApi(_apiClient);
+    sessionsApi = SessionsApi(_apiClient);
+  }
+
+  Future<void> _setUserAgentHeader() async {
+    final userAgent = await getUserAgentString();
+    _apiClient.addDefaultHeader('User-Agent', userAgent);
   }
 
   Future<String> resolveAndSetEndpoint(String serverUrl) async {
@@ -72,7 +86,7 @@ class ApiService implements Authentication {
     setEndpoint(endpoint);
 
     // Save in local database for next startup
-    Store.put(StoreKey.serverEndpoint, endpoint);
+    await Store.put(StoreKey.serverEndpoint, endpoint);
     return endpoint;
   }
 
@@ -84,15 +98,17 @@ class ApiService implements Authentication {
   ///  port   - optional (default: based on schema)
   ///  path   - optional
   Future<String> resolveEndpoint(String serverUrl) async {
-    final url = sanitizeUrl(serverUrl);
-
-    if (!await _isEndpointAvailable(serverUrl)) {
-      throw ApiException(503, "Server is not reachable");
-    }
+    String url = sanitizeUrl(serverUrl);
 
     // Check for /.well-known/immich
     final wellKnownEndpoint = await _getWellKnownEndpoint(url);
-    if (wellKnownEndpoint.isNotEmpty) return wellKnownEndpoint;
+    if (wellKnownEndpoint.isNotEmpty) {
+      url = sanitizeUrl(wellKnownEndpoint);
+    }
+
+    if (!await _isEndpointAvailable(url)) {
+      throw ApiException(503, "Server is not reachable");
+    }
 
     // Otherwise, assume the URL provided is the api endpoint
     return url;
@@ -111,11 +127,7 @@ class ApiService implements Authentication {
     } on SocketException catch (_) {
       return false;
     } catch (error, stackTrace) {
-      _log.severe(
-        "Error while checking server availability",
-        error,
-        stackTrace,
-      );
+      _log.severe("Error while checking server availability", error, stackTrace);
       return false;
     }
     return true;
@@ -128,10 +140,9 @@ class ApiService implements Authentication {
       var headers = {"Accept": "application/json"};
       headers.addAll(getRequestHeaders());
 
-      final res = await client.get(
-        Uri.parse("$baseUrl/.well-known/immich"),
-        headers: headers,
-      );
+      final res = await client
+          .get(Uri.parse("$baseUrl/.well-known/immich"), headers: headers)
+          .timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -144,7 +155,7 @@ class ApiService implements Authentication {
         return endpoint;
       }
     } catch (e) {
-      debugPrint("Could not locate /.well-known/immich at $baseUrl");
+      dPrint(() => "Could not locate /.well-known/immich at $baseUrl");
     }
 
     return "";
@@ -160,14 +171,15 @@ class ApiService implements Authentication {
 
     if (Platform.isIOS) {
       final iosInfo = await deviceInfoPlugin.iosInfo;
-      authenticationApi.apiClient
-          .addDefaultHeader('deviceModel', iosInfo.utsname.machine);
+      authenticationApi.apiClient.addDefaultHeader('deviceModel', iosInfo.utsname.machine);
       authenticationApi.apiClient.addDefaultHeader('deviceType', 'iOS');
-    } else {
+    } else if (Platform.isAndroid) {
       final androidInfo = await deviceInfoPlugin.androidInfo;
-      authenticationApi.apiClient
-          .addDefaultHeader('deviceModel', androidInfo.model);
+      authenticationApi.apiClient.addDefaultHeader('deviceModel', androidInfo.model);
       authenticationApi.apiClient.addDefaultHeader('deviceType', 'Android');
+    } else {
+      authenticationApi.apiClient.addDefaultHeader('deviceModel', 'Unknown');
+      authenticationApi.apiClient.addDefaultHeader('deviceType', 'Unknown');
     }
   }
 
@@ -192,10 +204,7 @@ class ApiService implements Authentication {
   }
 
   @override
-  Future<void> applyToParams(
-    List<QueryParam> queryParams,
-    Map<String, String> headerParams,
-  ) {
+  Future<void> applyToParams(List<QueryParam> queryParams, Map<String, String> headerParams) {
     return Future<void>(() {
       var headers = ApiService.getRequestHeaders();
       headerParams.addAll(headers);

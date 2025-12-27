@@ -1,32 +1,30 @@
 <script lang="ts">
   import { shortcuts } from '$lib/actions/shortcut';
-  import CircleIconButton from '$lib/components/elements/buttons/circle-icon-button.svelte';
   import DeleteAssetDialog from '$lib/components/photos-page/delete-asset-dialog.svelte';
-  import {
-    NotificationType,
-    notificationController,
-  } from '$lib/components/shared-components/notification/notification';
-  import Portal from '$lib/components/shared-components/portal/portal.svelte';
   import { AssetAction } from '$lib/constants';
+  import Portal from '$lib/elements/Portal.svelte';
+  import { featureFlagsManager } from '$lib/managers/feature-flags-manager.svelte';
   import { showDeleteModal } from '$lib/stores/preferences.store';
-  import { featureFlags } from '$lib/stores/server-config.store';
   import { handleError } from '$lib/utils/handle-error';
+  import { toTimelineAsset } from '$lib/utils/timeline-util';
   import { deleteAssets, type AssetResponseDto } from '@immich/sdk';
+  import { IconButton, toastManager } from '@immich/ui';
   import { mdiDeleteForeverOutline, mdiDeleteOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
-  import type { OnAction } from './action';
+  import type { OnAction, PreAction } from './action';
 
   interface Props {
     asset: AssetResponseDto;
     onAction: OnAction;
+    preAction: PreAction;
   }
 
-  let { asset, onAction }: Props = $props();
+  let { asset, onAction, preAction }: Props = $props();
 
   let showConfirmModal = $state(false);
 
   const trashOrDelete = async (force = false) => {
-    if (force || !$featureFlags.trash) {
+    if (force || !featureFlagsManager.value.trash) {
       if ($showDeleteModal) {
         showConfirmModal = true;
         return;
@@ -41,13 +39,10 @@
 
   const trashAsset = async () => {
     try {
+      preAction({ type: AssetAction.TRASH, asset: toTimelineAsset(asset) });
       await deleteAssets({ assetBulkDeleteDto: { ids: [asset.id] } });
-      onAction({ type: AssetAction.TRASH, asset });
-
-      notificationController.show({
-        message: $t('moved_to_trash'),
-        type: NotificationType.Info,
-      });
+      onAction({ type: AssetAction.TRASH, asset: toTimelineAsset(asset) });
+      toastManager.success($t('moved_to_trash'));
     } catch (error) {
       handleError(error, $t('errors.unable_to_trash_asset'));
     }
@@ -55,13 +50,10 @@
 
   const deleteAsset = async () => {
     try {
+      preAction({ type: AssetAction.DELETE, asset: toTimelineAsset(asset) });
       await deleteAssets({ assetBulkDeleteDto: { ids: [asset.id], force: true } });
-      onAction({ type: AssetAction.DELETE, asset });
-
-      notificationController.show({
-        message: $t('permanently_deleted_asset'),
-        type: NotificationType.Info,
-      });
+      onAction({ type: AssetAction.DELETE, asset: toTimelineAsset(asset) });
+      toastManager.success($t('permanently_deleted_asset'));
     } catch (error) {
       handleError(error, $t('errors.unable_to_delete_asset'));
     } finally {
@@ -70,17 +62,19 @@
   };
 </script>
 
-<svelte:window
+<svelte:document
   use:shortcuts={[
     { shortcut: { key: 'Delete' }, onShortcut: () => trashOrDelete(asset.isTrashed) },
     { shortcut: { key: 'Delete', shift: true }, onShortcut: () => trashOrDelete(true) },
   ]}
 />
 
-<CircleIconButton
-  color="opaque"
+<IconButton
+  color="secondary"
+  shape="round"
+  variant="ghost"
   icon={asset.isTrashed ? mdiDeleteForeverOutline : mdiDeleteOutline}
-  title={asset.isTrashed ? $t('permanently_delete') : $t('delete')}
+  aria-label={asset.isTrashed ? $t('permanently_delete') : $t('delete')}
   onclick={() => trashOrDelete(asset.isTrashed)}
 />
 

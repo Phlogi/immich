@@ -68,7 +68,7 @@
               class="flex gap-4 rounded-lg px-5 py-4 transition-all hover:bg-gray-200 dark:hover:bg-gray-700"
             >
               <UserAvatar user={partner} size="lg" />
-              <div class="text-left">
+              <div class="text-start">
                 <p class="text-immich-fg dark:text-immich-dark-fg">
                   {partner.name}
                 </p>
@@ -94,7 +94,7 @@
         <Albums sharedAlbums={data.sharedAlbums} userSettings={settings} showOwner>
           <!-- Empty List -->
           {#snippet empty()}
-            <EmptyPlaceholder text={$t('no_shared_albums_message')} src={empty2Url} />
+            <EmptyPlaceholder text={$t('no_shared_albums_message')} src={empty2Url} class="mt-10 mx-auto" />
           {/snippet}
         </Albums>
       </div>

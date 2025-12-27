@@ -11,22 +11,17 @@ import 'package:immich_mobile/widgets/settings/settings_switch_list_tile.dart';
 import 'package:immich_mobile/utils/hooks/app_settings_update_hook.dart';
 
 class ThemeSetting extends HookConsumerWidget {
-  const ThemeSetting({
-    super.key,
-  });
+  const ThemeSetting({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentThemeString = useAppSettingsState(AppSettingsEnum.themeMode);
     final currentTheme = useValueNotifier(ref.read(immichThemeModeProvider));
     final isDarkTheme = useValueNotifier(currentTheme.value == ThemeMode.dark);
-    final isSystemTheme =
-        useValueNotifier(currentTheme.value == ThemeMode.system);
+    final isSystemTheme = useValueNotifier(currentTheme.value == ThemeMode.system);
 
-    final applyThemeToBackgroundSetting =
-        useAppSettingsState(AppSettingsEnum.colorfulInterface);
-    final applyThemeToBackgroundProvider =
-        useValueNotifier(ref.read(colorfulInterfaceSettingProvider));
+    final applyThemeToBackgroundSetting = useAppSettingsState(AppSettingsEnum.colorfulInterface);
+    final applyThemeToBackgroundProvider = useValueNotifier(ref.read(colorfulInterfaceSettingProvider));
 
     useValueChanged(
       currentThemeString.value,
@@ -39,8 +34,7 @@ class ThemeSetting extends HookConsumerWidget {
 
     useValueChanged(
       applyThemeToBackgroundSetting.value,
-      (_, __) => applyThemeToBackgroundProvider.value =
-          applyThemeToBackgroundSetting.value,
+      (_, __) => applyThemeToBackgroundProvider.value = applyThemeToBackgroundSetting.value,
     );
 
     void onThemeChange(bool isDark) {
@@ -74,14 +68,13 @@ class ThemeSetting extends HookConsumerWidget {
 
     void onSurfaceColorSettingChange(bool useColorfulInterface) {
       applyThemeToBackgroundSetting.value = useColorfulInterface;
-      ref.watch(colorfulInterfaceSettingProvider.notifier).state =
-          useColorfulInterface;
+      ref.watch(colorfulInterfaceSettingProvider.notifier).state = useColorfulInterface;
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SettingsSubTitle(title: "theme_setting_theme_title".tr()),
+        SettingsSubTitle(title: "theme".tr()),
         SettingsSwitchListTile(
           valueNotifier: isSystemTheme,
           title: 'theme_setting_system_theme_switch'.tr(),
@@ -90,7 +83,7 @@ class ThemeSetting extends HookConsumerWidget {
         if (currentTheme.value != ThemeMode.system)
           SettingsSwitchListTile(
             valueNotifier: isDarkTheme,
-            title: 'theme_setting_dark_mode_switch'.tr(),
+            title: 'map_settings_dark_mode'.tr(),
             onChanged: onThemeChange,
           ),
         const PrimaryColorSetting(),

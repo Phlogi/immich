@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import archiver from 'archiver';
-import chokidar, { WatchOptions } from 'chokidar';
+import chokidar, { ChokidarOptions } from 'chokidar';
 import { escapePath, glob, globStream } from 'fast-glob';
-import { constants, createReadStream, createWriteStream, existsSync, mkdirSync } from 'node:fs';
+import { constants, createReadStream, createWriteStream, existsSync, mkdirSync, ReadOptionsWithBuffer } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Readable, Writable } from 'node:stream';
@@ -103,14 +103,18 @@ export class StorageRepository {
     };
   }
 
-  async readFile(filepath: string, options?: fs.FileReadOptions<Buffer>): Promise<Buffer> {
+  async readFile(filepath: string, options?: ReadOptionsWithBuffer<Buffer>): Promise<Buffer> {
     const file = await fs.open(filepath);
     try {
       const { buffer } = await file.read(options);
-      return buffer;
+      return buffer as Buffer;
     } finally {
       await file.close();
     }
+  }
+
+  async readTextFile(filepath: string): Promise<string> {
+    return fs.readFile(filepath, 'utf8');
   }
 
   async checkFileExists(filepath: string, mode = constants.F_OK): Promise<boolean> {
@@ -160,6 +164,10 @@ export class StorageRepository {
     if (!existsSync(filepath)) {
       mkdirSync(filepath, { recursive: true });
     }
+  }
+
+  existsSync(filepath: string) {
+    return existsSync(filepath);
   }
 
   async checkDiskUsage(folder: string): Promise<DiskUsage> {
@@ -219,14 +227,14 @@ export class StorageRepository {
     }
   }
 
-  watch(paths: string[], options: WatchOptions, events: Partial<WatchEvents>) {
+  watch(paths: string[], options: ChokidarOptions, events: Partial<WatchEvents>) {
     const watcher = chokidar.watch(paths, options);
 
     watcher.on('ready', () => events.onReady?.());
     watcher.on('add', (path) => events.onAdd?.(path));
     watcher.on('change', (path) => events.onChange?.(path));
     watcher.on('unlink', (path) => events.onUnlink?.(path));
-    watcher.on('error', (error) => events.onError?.(error));
+    watcher.on('error', (error) => events.onError?.(error as Error));
 
     return () => watcher.close();
   }

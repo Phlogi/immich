@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CircleIconButton from '$lib/components/elements/buttons/circle-icon-button.svelte';
-  import { mdiMotionPauseOutline, mdiPlaySpeed } from '@mdi/js';
+  import { IconButton } from '@immich/ui';
+  import { mdiMotionPauseOutline, mdiMotionPlayOutline } from '@mdi/js';
   import { t } from 'svelte-i18n';
 
   interface Props {
@@ -11,9 +11,11 @@
   let { isPlaying, onClick }: Props = $props();
 </script>
 
-<CircleIconButton
-  color="opaque"
-  icon={isPlaying ? mdiMotionPauseOutline : mdiPlaySpeed}
-  title={isPlaying ? $t('stop_motion_photo') : $t('play_motion_photo')}
+<IconButton
+  color="secondary"
+  variant="ghost"
+  shape="round"
+  icon={isPlaying ? mdiMotionPauseOutline : mdiMotionPlayOutline}
+  aria-label={isPlaying ? $t('stop_motion_photo') : $t('play_motion_photo')}
   onclick={() => onClick(!isPlaying)}
 />

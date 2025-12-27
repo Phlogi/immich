@@ -13,11 +13,8 @@ class AllVideosPage extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('all_videos_page_title').tr(),
-        leading: IconButton(
-          onPressed: () => context.maybePop(),
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-        ),
+        title: const Text('videos').tr(),
+        leading: IconButton(onPressed: () => context.maybePop(), icon: const Icon(Icons.arrow_back_ios_rounded)),
       ),
       body: MultiselectGrid(renderListProvider: allVideosTimelineProvider),
     );

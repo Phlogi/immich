@@ -6,14 +6,20 @@ import {
   SwaggerDocumentOptions,
   SwaggerModule,
 } from '@nestjs/swagger';
-import { ReferenceObject, SchemaObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
+import {
+  OperationObject,
+  ReferenceObject,
+  SchemaObject,
+} from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 import _ from 'lodash';
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
+import picomatch from 'picomatch';
+import parse from 'picomatch/lib/parse';
 import { SystemConfig } from 'src/config';
-import { CLIP_MODEL_INFO, serverVersion } from 'src/constants';
+import { CLIP_MODEL_INFO, endpointTags, serverVersion } from 'src/constants';
 import { extraSyncModels } from 'src/dtos/sync.dto';
-import { ImmichCookie, ImmichHeader, MetadataKey } from 'src/enum';
+import { ApiCustomExtension, ImmichCookie, ImmichHeader, MetadataKey } from 'src/enum';
 import { LoggingRepository } from 'src/repositories/logging.repository';
 
 export class ImmichStartupError extends Error {}
@@ -42,8 +48,8 @@ export const getMethodNames = (instance: any) => {
   return methods;
 };
 
-export const getExternalDomain = (server: SystemConfig['server'], port: number) =>
-  server.externalDomain || `http://localhost:${port}`;
+export const getExternalDomain = (server: SystemConfig['server'], defaultDomain = 'https://my.immich.app') =>
+  server.externalDomain || defaultDomain;
 
 /**
  * @returns a list of strings representing the keys of the object in dot notation
@@ -89,6 +95,8 @@ export const unsetDeep = (object: unknown, key: string) => {
 const isMachineLearningEnabled = (machineLearning: SystemConfig['machineLearning']) => machineLearning.enabled;
 export const isSmartSearchEnabled = (machineLearning: SystemConfig['machineLearning']) =>
   isMachineLearningEnabled(machineLearning) && machineLearning.clip.enabled;
+export const isOcrEnabled = (machineLearning: SystemConfig['machineLearning']) =>
+  isMachineLearningEnabled(machineLearning) && machineLearning.ocr.enabled;
 export const isFacialRecognitionEnabled = (machineLearning: SystemConfig['machineLearning']) =>
   isMachineLearningEnabled(machineLearning) && machineLearning.facialRecognition.enabled;
 export const isDuplicateDetectionEnabled = (machineLearning: SystemConfig['machineLearning']) =>
@@ -131,7 +139,7 @@ function sortKeys<T>(target: T): T {
   }
 
   const result: Partial<T> = {};
-  const keys = Object.keys(target).sort() as Array<keyof T>;
+  const keys = Object.keys(target).toSorted() as Array<keyof T>;
   for (const key of keys) {
     result[key] = sortKeys(target[key]);
   }
@@ -170,10 +178,7 @@ const patchOpenAPI = (document: OpenAPIObject) => {
             throw new Error(`Invalid number format: ${schemaName}.${key}=float (use double instead). `);
           }
         }
-
-        if (schema.required) {
-          schema.required = schema.required.sort();
-        }
+        schema.required?.sort();
       }
     }
   }
@@ -196,7 +201,12 @@ const patchOpenAPI = (document: OpenAPIObject) => {
       trace: path.trace,
     };
 
-    for (const operation of Object.values(operations)) {
+    for (const operation of Object.values(operations) as Array<
+      OperationObject & {
+        [ApiCustomExtension.AdminOnly]?: boolean;
+        [ApiCustomExtension.Permission]?: string;
+      }
+    >) {
       if (!operation) {
         continue;
       }
@@ -205,12 +215,12 @@ const patchOpenAPI = (document: OpenAPIObject) => {
         delete operation.summary;
       }
 
-      if (operation.operationId) {
-        // console.log(`${routeToErrorMessage(operation.operationId).padEnd(40)} (${operation.operationId})`);
-      }
-
       if (operation.description === '') {
         delete operation.description;
+      }
+
+      if (operation.operationId) {
+        // console.log(`${routeToErrorMessage(operation.operationId).padEnd(40)} (${operation.operationId})`);
       }
 
       if (operation.parameters) {
@@ -223,7 +233,7 @@ const patchOpenAPI = (document: OpenAPIObject) => {
 };
 
 export const useSwagger = (app: INestApplication, { write }: { write: boolean }) => {
-  const config = new DocumentBuilder()
+  const builder = new DocumentBuilder()
     .setTitle('Immich')
     .setDescription('Immich API')
     .setVersion(serverVersion.toString())
@@ -232,17 +242,21 @@ export const useSwagger = (app: INestApplication, { write }: { write: boolean })
       scheme: 'Bearer',
       in: 'header',
     })
-    .addCookieAuth(ImmichCookie.ACCESS_TOKEN)
+    .addCookieAuth(ImmichCookie.AccessToken)
     .addApiKey(
       {
         type: 'apiKey',
         in: 'header',
-        name: ImmichHeader.API_KEY,
+        name: ImmichHeader.ApiKey,
       },
-      MetadataKey.API_KEY_SECURITY,
+      MetadataKey.ApiKeySecurity,
     )
-    .addServer('/api')
-    .build();
+    .addServer('/api');
+
+  for (const [tag, description] of Object.entries(endpointTags)) {
+    builder.addTag(tag, description);
+  }
+  const config = builder.build();
 
   const options: SwaggerDocumentOptions = {
     operationIdFactory: (controllerKey: string, methodKey: string) => methodKey,
@@ -268,3 +282,39 @@ export const useSwagger = (app: INestApplication, { write }: { write: boolean })
     writeFileSync(outputPath, JSON.stringify(patchOpenAPI(specification), null, 2), { encoding: 'utf8' });
   }
 };
+
+const convertTokenToSqlPattern = (token: parse.Token): string => {
+  switch (token.type) {
+    case 'slash': {
+      return '/';
+    }
+    case 'text': {
+      return token.value;
+    }
+    case 'globstar':
+    case 'star': {
+      return '%';
+    }
+    case 'underscore': {
+      return String.raw`\_`;
+    }
+    case 'qmark': {
+      return '_';
+    }
+    case 'dot': {
+      return '.';
+    }
+    default: {
+      return '';
+    }
+  }
+};
+
+export const globToSqlPattern = (glob: string) => {
+  const tokens = picomatch.parse(glob).tokens;
+  return tokens.map((token) => convertTokenToSqlPattern(token)).join('');
+};
+
+export function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}

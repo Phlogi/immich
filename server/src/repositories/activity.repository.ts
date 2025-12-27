@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { ExpressionBuilder, Insertable, Kysely } from 'kysely';
+import { Insertable, Kysely, NotNull, sql } from 'kysely';
 import { jsonObjectFrom } from 'kysely/helpers/postgres';
 import { InjectKysely } from 'nestjs-kysely';
 import { columns } from 'src/database';
-import { Activity, DB } from 'src/db';
 import { DummyValue, GenerateSql } from 'src/decorators';
+import { AssetVisibility } from 'src/enum';
+import { DB } from 'src/schema';
+import { ActivityTable } from 'src/schema/tables/activity.table';
 import { asUuid } from 'src/utils/database';
 
 export interface ActivitySearch {
@@ -13,16 +15,6 @@ export interface ActivitySearch {
   userId?: string;
   isLiked?: boolean;
 }
-
-const withUser = (eb: ExpressionBuilder<DB, 'activity'>) => {
-  return jsonObjectFrom(
-    eb
-      .selectFrom('users')
-      .select(columns.userDto)
-      .whereRef('users.id', '=', 'activity.userId')
-      .where('users.deletedAt', 'is', null),
-  ).as('user');
-};
 
 @Injectable()
 export class ActivityRepository {
@@ -35,52 +27,75 @@ export class ActivityRepository {
     return this.db
       .selectFrom('activity')
       .selectAll('activity')
-      .select(withUser)
-      .leftJoin('assets', (join) => join.onRef('assets.id', '=', 'activity.assetId').on('assets.deletedAt', 'is', null))
+      .innerJoin('user as user2', (join) =>
+        join.onRef('user2.id', '=', 'activity.userId').on('user2.deletedAt', 'is', null),
+      )
+      .innerJoinLateral(
+        (eb) =>
+          eb
+            .selectFrom(sql`(select 1)`.as('dummy'))
+            .select(columns.userWithPrefix)
+            .as('user'),
+        (join) => join.onTrue(),
+      )
+      .select((eb) => eb.fn.toJson('user').as('user'))
+      .leftJoin('asset', 'asset.id', 'activity.assetId')
       .$if(!!userId, (qb) => qb.where('activity.userId', '=', userId!))
       .$if(assetId === null, (qb) => qb.where('assetId', 'is', null))
       .$if(!!assetId, (qb) => qb.where('activity.assetId', '=', assetId!))
       .$if(!!albumId, (qb) => qb.where('activity.albumId', '=', albumId!))
       .$if(isLiked !== undefined, (qb) => qb.where('activity.isLiked', '=', isLiked!))
+      .where('asset.deletedAt', 'is', null)
       .orderBy('activity.createdAt', 'asc')
       .execute();
   }
 
-  async create(activity: Insertable<Activity>) {
-    return this.save(activity);
+  @GenerateSql({ params: [{ albumId: DummyValue.UUID, userId: DummyValue.UUID }] })
+  async create(activity: Insertable<ActivityTable>) {
+    return this.db
+      .insertInto('activity')
+      .values(activity)
+      .returningAll()
+      .returning((eb) =>
+        jsonObjectFrom(eb.selectFrom('user').whereRef('user.id', '=', 'activity.userId').select(columns.user)).as(
+          'user',
+        ),
+      )
+      .$narrowType<{ user: NotNull }>()
+      .executeTakeFirstOrThrow();
   }
 
+  @GenerateSql({ params: [DummyValue.UUID] })
   async delete(id: string) {
     await this.db.deleteFrom('activity').where('id', '=', asUuid(id)).execute();
   }
 
   @GenerateSql({ params: [{ albumId: DummyValue.UUID, assetId: DummyValue.UUID }] })
-  async getStatistics({ albumId, assetId }: { albumId: string; assetId?: string }): Promise<number> {
-    const { count } = await this.db
+  async getStatistics({
+    albumId,
+    assetId,
+  }: {
+    albumId: string;
+    assetId?: string;
+  }): Promise<{ comments: number; likes: number }> {
+    const result = await this.db
       .selectFrom('activity')
-      .select((eb) => eb.fn.countAll().as('count'))
-      .innerJoin('users', (join) => join.onRef('users.id', '=', 'activity.userId').on('users.deletedAt', 'is', null))
-      .leftJoin('assets', 'assets.id', 'activity.assetId')
+      .select((eb) => [
+        eb.fn.countAll<number>().filterWhere('activity.isLiked', '=', false).as('comments'),
+        eb.fn.countAll<number>().filterWhere('activity.isLiked', '=', true).as('likes'),
+      ])
+      .innerJoin('user', (join) => join.onRef('user.id', '=', 'activity.userId').on('user.deletedAt', 'is', null))
+      .leftJoin('asset', 'asset.id', 'activity.assetId')
       .$if(!!assetId, (qb) => qb.where('activity.assetId', '=', assetId!))
       .where('activity.albumId', '=', albumId)
-      .where('activity.isLiked', '=', false)
-      .where('assets.deletedAt', 'is', null)
-      .where('assets.fileCreatedAt', 'is not', null)
-      .where('assets.fileModifiedAt', 'is not', null)
-      .where('assets.localDateTime', 'is not', null)
+      .where(({ or, and, eb }) =>
+        or([
+          and([eb('asset.deletedAt', 'is', null), eb('asset.visibility', '!=', sql.lit(AssetVisibility.Locked))]),
+          eb('asset.id', 'is', null),
+        ]),
+      )
       .executeTakeFirstOrThrow();
 
-    return count as number;
-  }
-
-  private async save(entity: Insertable<Activity>) {
-    const { id } = await this.db.insertInto('activity').values(entity).returning('id').executeTakeFirstOrThrow();
-
-    return this.db
-      .selectFrom('activity')
-      .selectAll('activity')
-      .select(withUser)
-      .where('activity.id', '=', asUuid(id))
-      .executeTakeFirstOrThrow();
+    return result;
   }
 }

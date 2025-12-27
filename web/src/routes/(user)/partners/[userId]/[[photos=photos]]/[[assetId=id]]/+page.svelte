@@ -1,19 +1,18 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import AddToAlbum from '$lib/components/photos-page/actions/add-to-album.svelte';
-  import CreateSharedLink from '$lib/components/photos-page/actions/create-shared-link.svelte';
-  import DownloadAction from '$lib/components/photos-page/actions/download-action.svelte';
-  import AssetGrid from '$lib/components/photos-page/asset-grid.svelte';
   import ButtonContextMenu from '$lib/components/shared-components/context-menu/button-context-menu.svelte';
-  import AssetSelectControlBar from '$lib/components/photos-page/asset-select-control-bar.svelte';
   import ControlAppBar from '$lib/components/shared-components/control-app-bar.svelte';
+  import AddToAlbum from '$lib/components/timeline/actions/AddToAlbumAction.svelte';
+  import CreateSharedLink from '$lib/components/timeline/actions/CreateSharedLinkAction.svelte';
+  import DownloadAction from '$lib/components/timeline/actions/DownloadAction.svelte';
+  import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
+  import Timeline from '$lib/components/timeline/Timeline.svelte';
   import { AppRoute } from '$lib/constants';
-  import { AssetStore } from '$lib/stores/assets.store';
-  import { onDestroy } from 'svelte';
-  import type { PageData } from './$types';
-  import { mdiPlus, mdiArrowLeft } from '@mdi/js';
-  import { t } from 'svelte-i18n';
   import { AssetInteraction } from '$lib/stores/asset-interaction.svelte';
+  import { AssetVisibility } from '@immich/sdk';
+  import { mdiArrowLeft, mdiPlus } from '@mdi/js';
+  import { t } from 'svelte-i18n';
+  import type { PageData } from './$types';
 
   interface Props {
     data: PageData;
@@ -21,7 +20,12 @@
 
   let { data }: Props = $props();
 
-  const assetStore = new AssetStore({ userId: data.partner.id, isArchived: false, withStacked: true });
+  const options = $derived({
+    userId: data.partner.id,
+    visibility: AssetVisibility.Timeline,
+    withStacked: true,
+  });
+
   const assetInteraction = new AssetInteraction();
 
   const handleEscape = () => {
@@ -30,33 +34,30 @@
       return;
     }
   };
-
-  onDestroy(() => {
-    assetStore.destroy();
-  });
 </script>
 
-<main class="grid h-screen bg-immich-bg pt-18 dark:bg-immich-dark-bg">
-  {#if assetInteraction.selectionActive}
-    <AssetSelectControlBar
-      assets={assetInteraction.selectedAssets}
-      clearSelect={() => assetInteraction.clearMultiselect()}
-    >
-      <CreateSharedLink />
-      <ButtonContextMenu icon={mdiPlus} title={$t('add')}>
-        <AddToAlbum />
-        <AddToAlbum shared />
-      </ButtonContextMenu>
-      <DownloadAction />
-    </AssetSelectControlBar>
-  {:else}
-    <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(AppRoute.SHARING)}>
-      {#snippet leading()}
-        <p class="whitespace-nowrap text-immich-fg dark:text-immich-dark-fg">
-          {data.partner.name}'s photos
-        </p>
-      {/snippet}
-    </ControlAppBar>
-  {/if}
-  <AssetGrid enableRouting={true} {assetStore} {assetInteraction} onEscape={handleEscape} />
+<main class="relative h-dvh overflow-hidden px-2 md:px-6 max-md:pt-(--navbar-height-md) pt-(--navbar-height)">
+  <Timeline enableRouting={true} {options} {assetInteraction} onEscape={handleEscape} />
 </main>
+
+{#if assetInteraction.selectionActive}
+  <AssetSelectControlBar
+    assets={assetInteraction.selectedAssets}
+    clearSelect={() => assetInteraction.clearMultiselect()}
+  >
+    <CreateSharedLink />
+    <ButtonContextMenu icon={mdiPlus} title={$t('add_to')}>
+      <AddToAlbum />
+      <AddToAlbum shared />
+    </ButtonContextMenu>
+    <DownloadAction />
+  </AssetSelectControlBar>
+{:else}
+  <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(AppRoute.SHARING)}>
+    {#snippet leading()}
+      <p class="whitespace-nowrap text-immich-fg dark:text-immich-dark-fg">
+        {data.partner.name}'s photos
+      </p>
+    {/snippet}
+  </ControlAppBar>
+{/if}

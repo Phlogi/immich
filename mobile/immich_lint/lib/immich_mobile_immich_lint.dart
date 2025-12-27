@@ -23,7 +23,7 @@ class ImmichLinter extends PluginBase {
     return rules;
   }
 
-  static makeCode(String name, LintOptions options) => LintCode(
+  static LintCode makeCode(String name, LintOptions options) => LintCode(
         name: name,
         problemMessage: options.json["message"] as String,
         errorSeverity: ErrorSeverity.WARNING,
@@ -71,7 +71,9 @@ class ImportRule extends DartLintRule {
     final path = resolver.path.substring(_rootOffset);
 
     if ((_allowed != null && _allowed!.matches(path)) &&
-        (_forbidden == null || !_forbidden!.matches(path))) return;
+        (_forbidden == null || !_forbidden!.matches(path))) {
+      return;
+    }
 
     context.registry.addImportDirective((node) {
       final uri = node.uri.stringValue;

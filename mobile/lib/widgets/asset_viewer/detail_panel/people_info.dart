@@ -1,16 +1,15 @@
-import 'dart:math' as math;
-
 import 'package:auto_route/auto_route.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:immich_mobile/entities/asset.entity.dart';
 import 'package:immich_mobile/extensions/build_context_extensions.dart';
-import 'package:immich_mobile/providers/asset_viewer/asset_people.provider.dart';
 import 'package:immich_mobile/models/search/search_curated_content.model.dart';
+import 'package:immich_mobile/providers/asset_viewer/asset_people.provider.dart';
+import 'package:immich_mobile/routing/router.dart';
+import 'package:immich_mobile/utils/people.utils.dart';
 import 'package:immich_mobile/widgets/search/curated_people_row.dart';
 import 'package:immich_mobile/widgets/search/person_name_edit_form.dart';
-import 'package:immich_mobile/routing/router.dart';
-import 'package:immich_mobile/entities/asset.entity.dart';
 
 class PeopleInfo extends ConsumerWidget {
   final Asset asset;
@@ -20,20 +19,13 @@ class PeopleInfo extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final peopleProvider =
-        ref.watch(assetPeopleNotifierProvider(asset).notifier);
-    final people = ref
-        .watch(assetPeopleNotifierProvider(asset))
-        .value
-        ?.where((p) => !p.isHidden);
-    final double imageSize = math.min(context.width / 3, 150);
+    final peopleProvider = ref.watch(assetPeopleNotifierProvider(asset).notifier);
+    final people = ref.watch(assetPeopleNotifierProvider(asset)).value?.where((p) => !p.isHidden);
 
-    showPersonNameEditModel(
-      String personId,
-      String personName,
-    ) {
+    showPersonNameEditModel(String personId, String personName) {
       return showDialog(
         context: context,
+        useRootNavigator: false,
         builder: (BuildContext context) {
           return PersonNameEditForm(personId: personId, personName: personName);
         },
@@ -43,15 +35,22 @@ class PeopleInfo extends ConsumerWidget {
       });
     }
 
-    final curatedPeople = people
-            ?.map((p) => SearchCuratedContent(id: p.id, label: p.name))
+    final curatedPeople =
+        people
+            ?.map(
+              (p) => SearchCuratedContent(
+                id: p.id,
+                label: p.name,
+                subtitle: p.birthDate != null && p.birthDate!.isBefore(asset.fileCreatedAt)
+                    ? formatAge(p.birthDate!, asset.fileCreatedAt)
+                    : null,
+              ),
+            )
             .toList() ??
         [];
 
     return AnimatedCrossFade(
-      crossFadeState: (people?.isEmpty ?? true)
-          ? CrossFadeState.showFirst
-          : CrossFadeState.showSecond,
+      crossFadeState: (people?.isEmpty ?? true) ? CrossFadeState.showFirst : CrossFadeState.showSecond,
       duration: const Duration(milliseconds: 200),
       firstChild: Container(),
       secondChild: Padding(
@@ -71,27 +70,17 @@ class PeopleInfo extends ConsumerWidget {
                 ).tr(),
               ),
             ),
-            SizedBox(
-              height: imageSize,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 16.0),
-                child: CuratedPeopleRow(
-                  padding: padding,
-                  content: curatedPeople,
-                  onTap: (content, index) {
-                    context
-                        .pushRoute(
-                          PersonResultRoute(
-                            personId: content.id,
-                            personName: content.label,
-                          ),
-                        )
-                        .then((_) => peopleProvider.refresh());
-                  },
-                  onNameTap: (person, index) => {
-                    showPersonNameEditModel(person.id, person.label),
-                  },
-                ),
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: CuratedPeopleRow(
+                padding: padding,
+                content: curatedPeople,
+                onTap: (content, index) {
+                  context
+                      .pushRoute(PersonResultRoute(personId: content.id, personName: content.label))
+                      .then((_) => peopleProvider.refresh());
+                },
+                onNameTap: (person, index) => {showPersonNameEditModel(person.id, person.label)},
               ),
             ),
           ],

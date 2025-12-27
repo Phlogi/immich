@@ -1,88 +1,96 @@
 import { Injectable } from '@nestjs/common';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { OnJob } from 'src/decorators';
+import { BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
 import { mapAsset } from 'src/dtos/asset-response.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { DuplicateResponseDto } from 'src/dtos/duplicate.dto';
-import { AssetEntity } from 'src/entities/asset.entity';
-import { JobName, JobStatus, QueueName } from 'src/enum';
-import { WithoutProperty } from 'src/repositories/asset.repository';
+import { AssetVisibility, JobName, JobStatus, QueueName } from 'src/enum';
 import { AssetDuplicateResult } from 'src/repositories/search.repository';
 import { BaseService } from 'src/services/base.service';
-import { JobOf } from 'src/types';
-import { getAssetFiles } from 'src/utils/asset.util';
+import { JobItem, JobOf } from 'src/types';
 import { isDuplicateDetectionEnabled } from 'src/utils/misc';
-import { usePagination } from 'src/utils/pagination';
 
 @Injectable()
 export class DuplicateService extends BaseService {
   async getDuplicates(auth: AuthDto): Promise<DuplicateResponseDto[]> {
-    const duplicates = await this.assetRepository.getDuplicates(auth.user.id);
+    const duplicates = await this.duplicateRepository.getAll(auth.user.id);
     return duplicates.map(({ duplicateId, assets }) => ({
       duplicateId,
       assets: assets.map((asset) => mapAsset(asset, { auth })),
     }));
   }
 
-  @OnJob({ name: JobName.QUEUE_DUPLICATE_DETECTION, queue: QueueName.DUPLICATE_DETECTION })
-  async handleQueueSearchDuplicates({ force }: JobOf<JobName.QUEUE_DUPLICATE_DETECTION>): Promise<JobStatus> {
-    const { machineLearning } = await this.getConfig({ withCache: false });
-    if (!isDuplicateDetectionEnabled(machineLearning)) {
-      return JobStatus.SKIPPED;
-    }
-
-    const assetPagination = usePagination(JOBS_ASSET_PAGINATION_SIZE, (pagination) => {
-      return force
-        ? this.assetRepository.getAll(pagination, { isVisible: true })
-        : this.assetRepository.getWithout(pagination, WithoutProperty.DUPLICATE);
-    });
-
-    for await (const assets of assetPagination) {
-      await this.jobRepository.queueAll(
-        assets.map((asset) => ({ name: JobName.DUPLICATE_DETECTION, data: { id: asset.id } })),
-      );
-    }
-
-    return JobStatus.SUCCESS;
+  async delete(auth: AuthDto, id: string): Promise<void> {
+    await this.duplicateRepository.delete(auth.user.id, id);
   }
 
-  @OnJob({ name: JobName.DUPLICATE_DETECTION, queue: QueueName.DUPLICATE_DETECTION })
-  async handleSearchDuplicates({ id }: JobOf<JobName.DUPLICATE_DETECTION>): Promise<JobStatus> {
-    const { machineLearning } = await this.getConfig({ withCache: true });
+  async deleteAll(auth: AuthDto, dto: BulkIdsDto) {
+    await this.duplicateRepository.deleteAll(auth.user.id, dto.ids);
+  }
+
+  @OnJob({ name: JobName.AssetDetectDuplicatesQueueAll, queue: QueueName.DuplicateDetection })
+  async handleQueueSearchDuplicates({ force }: JobOf<JobName.AssetDetectDuplicatesQueueAll>): Promise<JobStatus> {
+    const { machineLearning } = await this.getConfig({ withCache: false });
     if (!isDuplicateDetectionEnabled(machineLearning)) {
-      return JobStatus.SKIPPED;
+      return JobStatus.Skipped;
     }
 
-    const asset = await this.assetRepository.getById(id, { files: true, smartSearch: true });
+    let jobs: JobItem[] = [];
+    const queueAll = async () => {
+      await this.jobRepository.queueAll(jobs);
+      jobs = [];
+    };
+
+    const assets = this.assetJobRepository.streamForSearchDuplicates(force);
+    for await (const asset of assets) {
+      jobs.push({ name: JobName.AssetDetectDuplicates, data: { id: asset.id } });
+      if (jobs.length >= JOBS_ASSET_PAGINATION_SIZE) {
+        await queueAll();
+      }
+    }
+
+    await queueAll();
+
+    return JobStatus.Success;
+  }
+
+  @OnJob({ name: JobName.AssetDetectDuplicates, queue: QueueName.DuplicateDetection })
+  async handleSearchDuplicates({ id }: JobOf<JobName.AssetDetectDuplicates>): Promise<JobStatus> {
+    const { machineLearning } = await this.getConfig({ withCache: true });
+    if (!isDuplicateDetectionEnabled(machineLearning)) {
+      return JobStatus.Skipped;
+    }
+
+    const asset = await this.assetJobRepository.getForSearchDuplicatesJob(id);
     if (!asset) {
       this.logger.error(`Asset ${id} not found`);
-      return JobStatus.FAILED;
+      return JobStatus.Failed;
     }
 
     if (asset.stackId) {
       this.logger.debug(`Asset ${id} is part of a stack, skipping`);
-      return JobStatus.SKIPPED;
+      return JobStatus.Skipped;
     }
 
-    if (!asset.isVisible) {
+    if (asset.visibility === AssetVisibility.Hidden) {
       this.logger.debug(`Asset ${id} is not visible, skipping`);
-      return JobStatus.SKIPPED;
+      return JobStatus.Skipped;
     }
 
-    const { previewFile } = getAssetFiles(asset.files);
-    if (!previewFile) {
-      this.logger.warn(`Asset ${id} is missing preview image`);
-      return JobStatus.FAILED;
+    if (asset.visibility === AssetVisibility.Locked) {
+      this.logger.debug(`Asset ${id} is locked, skipping`);
+      return JobStatus.Skipped;
     }
 
-    if (!asset.smartSearch?.embedding) {
+    if (!asset.embedding) {
       this.logger.debug(`Asset ${id} is missing embedding`);
-      return JobStatus.FAILED;
+      return JobStatus.Failed;
     }
 
-    const duplicateAssets = await this.searchRepository.searchDuplicates({
+    const duplicateAssets = await this.duplicateRepository.search({
       assetId: asset.id,
-      embedding: asset.smartSearch.embedding,
+      embedding: asset.embedding,
       maxDistance: machineLearning.duplicateDetection.maxDistance,
       type: asset.type,
       userIds: [asset.ownerId],
@@ -102,10 +110,13 @@ export class DuplicateService extends BaseService {
     const duplicatesDetectedAt = new Date();
     await this.assetRepository.upsertJobStatus(...assetIds.map((assetId) => ({ assetId, duplicatesDetectedAt })));
 
-    return JobStatus.SUCCESS;
+    return JobStatus.Success;
   }
 
-  private async updateDuplicates(asset: AssetEntity, duplicateAssets: AssetDuplicateResult[]): Promise<string[]> {
+  private async updateDuplicates(
+    asset: { id: string; duplicateId: string | null },
+    duplicateAssets: AssetDuplicateResult[],
+  ): Promise<string[]> {
     const duplicateIds = [
       ...new Set(
         duplicateAssets
@@ -120,7 +131,11 @@ export class DuplicateService extends BaseService {
       .map((duplicate) => duplicate.assetId);
     assetIdsToUpdate.push(asset.id);
 
-    await this.assetRepository.updateDuplicates({ targetDuplicateId, assetIds: assetIdsToUpdate, duplicateIds });
+    await this.duplicateRepository.merge({
+      targetId: targetDuplicateId,
+      assetIds: assetIdsToUpdate,
+      sourceIds: duplicateIds,
+    });
     return assetIdsToUpdate;
   }
 }

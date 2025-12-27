@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:immich_mobile/domain/models/store.model.dart';
 import 'package:immich_mobile/entities/asset.entity.dart';
 import 'package:immich_mobile/entities/store.entity.dart';
@@ -29,39 +28,25 @@ class ImmichImage extends StatelessWidget {
   // either by using the asset ID or the asset itself
   /// [asset] is the Asset to request, or else use [assetId] to get a remote
   /// image provider
-  static ImageProvider imageProvider({
-    Asset? asset,
-    String? assetId,
-    double width = 1080,
-    double height = 1920,
-  }) {
+  static ImageProvider imageProvider({Asset? asset, String? assetId, double width = 1080, double height = 1920}) {
     if (asset == null && assetId == null) {
       throw Exception('Must supply either asset or assetId');
     }
 
     if (asset == null) {
-      return ImmichRemoteImageProvider(
-        assetId: assetId!,
-      );
+      return ImmichRemoteImageProvider(assetId: assetId!);
     }
 
     if (useLocal(asset)) {
-      return ImmichLocalImageProvider(
-        asset: asset,
-        width: width,
-        height: height,
-      );
+      return ImmichLocalImageProvider(asset: asset, width: width, height: height);
     } else {
-      return ImmichRemoteImageProvider(
-        assetId: asset.remoteId!,
-      );
+      return ImmichRemoteImageProvider(assetId: asset.remoteId!);
     }
   }
 
   // Whether to use the local asset image provider or a remote one
   static bool useLocal(Asset asset) =>
-      !asset.isRemote ||
-      asset.isLocal && !Store.get(StoreKey.preferRemoteImage, false);
+      !asset.isRemote || asset.isLocal && !Store.get(StoreKey.preferRemoteImage, false);
 
   @override
   Widget build(BuildContext context) {
@@ -70,46 +55,29 @@ class ImmichImage extends StatelessWidget {
         color: Colors.grey,
         width: width,
         height: height,
-        child: const Center(
-          child: Icon(Icons.no_photography),
-        ),
+        child: const Center(child: Icon(Icons.no_photography)),
       );
     }
 
+    final imageProviderInstance = ImmichImage.imageProvider(asset: asset, width: context.width, height: context.height);
+
     return OctoImage(
       fadeInDuration: const Duration(milliseconds: 0),
-      fadeOutDuration: const Duration(milliseconds: 200),
+      fadeOutDuration: const Duration(milliseconds: 100),
       placeholderBuilder: (context) {
         if (placeholder != null) {
-          // Use the gray box placeholder
           return placeholder!;
         }
-        // No placeholder
         return const SizedBox();
       },
-      image: ImmichImage.imageProvider(
-        asset: asset,
-        width: context.width,
-        height: context.height,
-      ),
+      image: imageProviderInstance,
       width: width,
       height: height,
       fit: fit,
       errorBuilder: (context, error, stackTrace) {
-        if (error is PlatformException &&
-            error.code == "The asset not found!") {
-          debugPrint(
-            "Asset ${asset?.localId} does not exist anymore on device!",
-          );
-        } else {
-          debugPrint(
-            "Error getting thumb for assetId=${asset?.localId}: $error",
-          );
-        }
-        return Icon(
-          Icons.image_not_supported_outlined,
-          color: context.primaryColor,
-        );
+        imageProviderInstance.evict();
+
+        return Icon(Icons.image_not_supported_outlined, size: 32, color: Colors.red[200]);
       },
     );
   }

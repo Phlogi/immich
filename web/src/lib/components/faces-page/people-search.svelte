@@ -1,7 +1,7 @@
 <script lang="ts">
   import { initInput } from '$lib/actions/focus';
-  import SearchBar from '$lib/components/elements/search-bar.svelte';
   import { maximumLengthSearchPeople, timeBeforeShowLoadingSpinner } from '$lib/constants';
+  import SearchBar from '$lib/elements/SearchBar.svelte';
   import { handleError } from '$lib/utils/handle-error';
   import { searchNameLocal } from '$lib/utils/person';
   import { searchPerson, type PersonResponseDto } from '@immich/sdk';
@@ -50,7 +50,7 @@
     searchedPeopleLocal = $bindable(),
     type,
     numberPeopleToSearch = maximumLengthSearchPeople,
-    inputClass = 'w-full gap-2 bg-immich-bg dark:bg-immich-dark-bg',
+    inputClass = 'w-full gap-2',
     showLoadingSpinner = $bindable(false),
     placeholder = $t('name_or_nickname'),
     onReset = () => {},

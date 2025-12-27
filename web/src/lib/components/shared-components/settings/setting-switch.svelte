@@ -1,10 +1,10 @@
 <script lang="ts">
+  import { generateId } from '$lib/utils/generate-id';
+  import { Switch } from '@immich/ui';
+  import type { Snippet } from 'svelte';
+  import { t } from 'svelte-i18n';
   import { quintOut } from 'svelte/easing';
   import { fly } from 'svelte/transition';
-  import Slider from '$lib/components/elements/slider.svelte';
-  import { generateId } from '$lib/utils/generate-id';
-  import { t } from 'svelte-i18n';
-  import type { Snippet } from 'svelte';
 
   interface Props {
     title: string;
@@ -33,9 +33,9 @@
 </script>
 
 <div class="flex place-items-center justify-between">
-  <div class="mr-2">
-    <div class="flex h-[26px] place-items-center gap-1">
-      <label class="font-medium text-immich-primary dark:text-immich-dark-primary text-sm" for={sliderId}>
+  <div class="me-2">
+    <div class="flex h-6.5 place-items-center gap-1">
+      <label class="font-medium text-primary text-sm" for={sliderId}>
         {title}
       </label>
       {#if isEdited}
@@ -54,5 +54,5 @@
     {@render children?.()}
   </div>
 
-  <Slider id={sliderId} bind:checked {disabled} {onToggle} ariaDescribedBy={subtitleId} />
+  <Switch id={sliderId} bind:checked {disabled} onCheckedChange={onToggle} aria-describedby={subtitleId} />
 </div>

@@ -27,7 +27,8 @@
   <a href="README_de_DE.md">Deutsch</a>
   <a href="README_nl_NL.md">Nederlands</a>
   <a href="README_tr_TR.md">Türkçe</a>
-  <a href="README_zh_CN.md">中文</a>
+  <a href="README_zh_CN.md">简体中文</a>
+  <a href="README_zh_TW.md">正體中文</a>
   <a href="README_ru_RU.md">Русский</a>
   <a href="README_pt_BR.md">Português Brasileiro</a>
   <a href="README_sv_SE.md">Svenska</a>
@@ -44,13 +45,13 @@
 
 ## コンテンツ
 
-- [公式ドキュメント](https://immich.app/docs)
+- [公式ドキュメント](https://docs.immich.app)
 - [ロードマップ](https://github.com/orgs/immich-app/projects/1)
 - [デモ](#デモ)
 - [機能](#機能)
-- [紹介](https://immich.app/docs/overview/introduction)
-- [インストール](https://immich.app/docs/install/requirements)
-- [コントリビューションガイド](https://immich.app/docs/overview/support-the-project)
+- [紹介](https://docs.immich.app/overview/introduction)
+- [インストール](https://docs.immich.app/install/requirements)
+- [コントリビューションガイド](https://docs.immich.app/overview/support-the-project)
 
 ## ドキュメント
 
@@ -58,18 +59,12 @@
 
 ## デモ
 
-web デモは https://demo.immich.app からアクセスできます
-
-モバイルアプリの場合、`Server Endpoint URL` には `https://demo.immich.app/api` を使用することができます
+web デモは https://demo.immich.app からアクセスできます。モバイルアプリの場合、`Server Endpoint URL` には `https://demo.immich.app` を使用することができます
 
 ```bash title="Demo Credential"
 The credential
 email: demo@immich.app
 password: demo
-```
-
-```
-Spec: Free-tier Oracle VM - Amsterdam - 2.4Ghz quad-core ARM64 CPU, 24GB RAM
 ```
 
 # 機能

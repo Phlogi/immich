@@ -7,6 +7,12 @@ export const errorDto = {
     message: 'Authentication required',
     correlationId: expect.any(String),
   },
+  unauthorizedWithMessage: (message: string) => ({
+    error: 'Unauthorized',
+    statusCode: 401,
+    message,
+    correlationId: expect.any(String),
+  }),
   forbidden: {
     error: 'Forbidden',
     statusCode: 403,
@@ -103,6 +109,7 @@ export const loginResponseDto = {
     accessToken: expect.any(String),
     name: 'Immich Admin',
     isAdmin: true,
+    isOnboarded: false,
     profileImagePath: '',
     shouldChangePassword: true,
     userEmail: 'admin@immich.cloud',
@@ -115,7 +122,9 @@ export const deviceDto = {
     createdAt: expect.any(String),
     updatedAt: expect.any(String),
     current: true,
+    isPendingSyncReset: false,
     deviceOS: '',
     deviceType: '',
+    appVersion: null,
   },
 };

@@ -13,19 +13,14 @@ import 'package:immich_mobile/widgets/settings/settings_button_list_tile.dart';
 import 'package:immich_mobile/widgets/settings/settings_sub_page_scaffold.dart';
 import 'package:immich_mobile/widgets/settings/settings_switch_list_tile.dart';
 import 'package:immich_mobile/utils/hooks/app_settings_update_hook.dart';
-import 'package:immich_mobile/widgets/common/immich_loading_indicator.dart';
 
 class BackupSettings extends HookConsumerWidget {
-  const BackupSettings({
-    super.key,
-  });
+  const BackupSettings({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ignoreIcloudAssets =
-        useAppSettingsState(AppSettingsEnum.ignoreIcloudAssets);
-    final isAdvancedTroubleshooting =
-        useAppSettingsState(AppSettingsEnum.advancedTroubleshooting);
+    final ignoreIcloudAssets = useAppSettingsState(AppSettingsEnum.ignoreIcloudAssets);
+    final isAdvancedTroubleshooting = useAppSettingsState(AppSettingsEnum.advancedTroubleshooting);
     final albumSync = useAppSettingsState(AppSettingsEnum.syncAlbums);
     final isCorruptCheckInProgress = ref.watch(backupVerificationProvider);
     final isAlbumSyncInProgress = useState(false);
@@ -59,43 +54,29 @@ class BackupSettings extends HookConsumerWidget {
               ? const Column(
                   children: [
                     SizedBox(height: 20),
-                    Center(child: ImmichLoadingIndicator()),
+                    Center(child: CircularProgressIndicator()),
                     SizedBox(height: 20),
                   ],
                 )
               : null,
-          subtileText: !isCorruptCheckInProgress
-              ? 'check_corrupt_asset_backup_description'.tr()
-              : null,
+          subtileText: !isCorruptCheckInProgress ? 'check_corrupt_asset_backup_description'.tr() : null,
           buttonText: 'check_corrupt_asset_backup_button'.tr(),
           onButtonTap: !isCorruptCheckInProgress
-              ? () => ref
-                  .read(backupVerificationProvider.notifier)
-                  .performBackupCheck(context)
+              ? () => ref.read(backupVerificationProvider.notifier).performBackupCheck(context)
               : null,
         ),
       if (albumSync.value)
         SettingsButtonListTile(
           icon: Icons.photo_album_outlined,
           title: 'sync_albums'.tr(),
-          subtitle: Text(
-            "sync_albums_manual_subtitle".tr(),
-          ),
+          subtitle: Text("sync_albums_manual_subtitle".tr()),
           buttonText: 'sync_albums'.tr(),
           child: isAlbumSyncInProgress.value
-              ? const CircularProgressIndicator.adaptive(
-                  strokeWidth: 2,
-                )
-              : ElevatedButton(
-                  onPressed: syncAlbums,
-                  child: Text('sync'.tr()),
-                ),
+              ? const CircularProgressIndicator()
+              : ElevatedButton(onPressed: syncAlbums, child: Text('sync'.tr())),
         ),
     ];
 
-    return SettingsSubPageScaffold(
-      settings: backupSettings,
-      showDivider: true,
-    );
+    return SettingsSubPageScaffold(settings: backupSettings, showDivider: true);
   }
 }

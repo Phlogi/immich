@@ -1,5 +1,6 @@
 import {
   LoginResponseDto,
+  QueueName,
   createStack,
   deleteUserAdmin,
   getMyUser,
@@ -118,7 +119,7 @@ describe('/admin/users', () => {
       });
     }
 
-    it('should ignore `isAdmin`', async () => {
+    it('should accept `isAdmin`', async () => {
       const { status, body } = await request(app)
         .post(`/admin/users`)
         .send({
@@ -130,7 +131,7 @@ describe('/admin/users', () => {
         .set('Authorization', `Bearer ${admin.accessToken}`);
       expect(body).toMatchObject({
         email: 'user5@immich.cloud',
-        isAdmin: false,
+        isAdmin: true,
         shouldChangePassword: true,
       });
       expect(status).toBe(201);
@@ -163,14 +164,15 @@ describe('/admin/users', () => {
       });
     }
 
-    it('should not allow a non-admin to become an admin', async () => {
+    it('should allow a non-admin to become an admin', async () => {
+      const user = await utils.userSetup(admin.accessToken, createUserDto.create('admin2'));
       const { status, body } = await request(app)
-        .put(`/admin/users/${nonAdmin.userId}`)
+        .put(`/admin/users/${user.userId}`)
         .send({ isAdmin: true })
         .set('Authorization', `Bearer ${admin.accessToken}`);
 
       expect(status).toBe(200);
-      expect(body).toMatchObject({ isAdmin: false });
+      expect(body).toMatchObject({ isAdmin: true });
     });
 
     it('ignores updates to profileImagePath', async () => {
@@ -215,6 +217,19 @@ describe('/admin/users', () => {
       const user = await getMyUser({ headers: asBearerAuth(token.accessToken) });
       expect(user).toMatchObject({ email: nonAdmin.userEmail });
     });
+
+    it('should update the avatar color', async () => {
+      const { status, body } = await request(app)
+        .put(`/admin/users/${admin.userId}`)
+        .send({ avatarColor: 'orange' })
+        .set('Authorization', `Bearer ${admin.accessToken}`);
+
+      expect(status).toBe(200);
+      expect(body).toMatchObject({ avatarColor: 'orange' });
+
+      const after = await getUserAdmin({ id: admin.userId }, { headers: asBearerAuth(admin.accessToken) });
+      expect(after).toMatchObject({ avatarColor: 'orange' });
+    });
   });
 
   describe('PUT /admin/users/:id/preferences', () => {
@@ -238,19 +253,6 @@ describe('/admin/users', () => {
 
       const after = await getUserPreferencesAdmin({ id: admin.userId }, { headers: asBearerAuth(admin.accessToken) });
       expect(after).toMatchObject({ memories: { enabled: false } });
-    });
-
-    it('should update the avatar color', async () => {
-      const { status, body } = await request(app)
-        .put(`/admin/users/${admin.userId}/preferences`)
-        .send({ avatar: { color: 'orange' } })
-        .set('Authorization', `Bearer ${admin.accessToken}`);
-
-      expect(status).toBe(200);
-      expect(body).toMatchObject({ avatar: { color: 'orange' } });
-
-      const after = await getUserPreferencesAdmin({ id: admin.userId }, { headers: asBearerAuth(admin.accessToken) });
-      expect(after).toMatchObject({ avatar: { color: 'orange' } });
     });
 
     it('should update download archive size', async () => {
@@ -325,6 +327,8 @@ describe('/admin/users', () => {
         { stackCreateDto: { assetIds: [asset1.id, asset2.id] } },
         { headers: asBearerAuth(user.accessToken) },
       );
+
+      await utils.waitForQueueFinish(admin.accessToken, QueueName.BackgroundTask);
 
       const { status, body } = await request(app)
         .delete(`/admin/users/${user.userId}`)

@@ -1,17 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsArray, IsInt, IsNotEmpty, IsNumber, IsString, Max, Min, ValidateNested } from 'class-validator';
+import { Selectable } from 'kysely';
 import { DateTime } from 'luxon';
-import { PropertyLifecycle } from 'src/decorators';
+import { AssetFace, Person } from 'src/database';
+import { HistoryBuilder, Property } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
-import { AssetFaceEntity } from 'src/entities/asset-face.entity';
-import { PersonEntity } from 'src/entities/person.entity';
 import { SourceType } from 'src/enum';
+import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
+import { asDateString } from 'src/utils/date';
 import {
   IsDateStringFormat,
   MaxDateString,
   Optional,
   ValidateBoolean,
+  ValidateEnum,
   ValidateHexColor,
   ValidateUUID,
 } from 'src/validation';
@@ -31,8 +34,8 @@ export class PersonCreateDto {
   @ApiProperty({ format: 'date' })
   @MaxDateString(() => DateTime.now(), { message: 'Birth date cannot be in the future' })
   @IsDateStringFormat('yyyy-MM-dd')
-  @Optional({ nullable: true })
-  birthDate?: string | null;
+  @Optional({ nullable: true, emptyToNull: true })
+  birthDate?: Date | null;
 
   /**
    * Person visibility
@@ -52,8 +55,7 @@ export class PersonUpdateDto extends PersonCreateDto {
   /**
    * Asset is used to get the feature face thumbnail.
    */
-  @Optional()
-  @IsString()
+  @ValidateUUID({ optional: true })
   featureFaceAssetId?: string;
 }
 
@@ -109,11 +111,11 @@ export class PersonResponseDto {
   birthDate!: string | null;
   thumbnailPath!: string;
   isHidden!: boolean;
-  @PropertyLifecycle({ addedAt: 'v1.107.0' })
+  @Property({ history: new HistoryBuilder().added('v1.107.0').stable('v2') })
   updatedAt?: Date;
-  @PropertyLifecycle({ addedAt: 'v1.126.0' })
+  @Property({ history: new HistoryBuilder().added('v1.126.0').stable('v2') })
   isFavorite?: boolean;
-  @PropertyLifecycle({ addedAt: 'v1.126.0' })
+  @Property({ history: new HistoryBuilder().added('v1.126.0').stable('v2') })
   color?: string;
 }
 
@@ -136,7 +138,7 @@ export class AssetFaceWithoutPersonResponseDto {
   boundingBoxY1!: number;
   @ApiProperty({ type: 'integer' })
   boundingBoxY2!: number;
-  @ApiProperty({ enum: SourceType, enumName: 'SourceType' })
+  @ValidateEnum({ enum: SourceType, name: 'SourceType' })
   sourceType?: SourceType;
 }
 
@@ -214,15 +216,15 @@ export class PeopleResponseDto {
   people!: PersonResponseDto[];
 
   // TODO: make required after a few versions
-  @PropertyLifecycle({ addedAt: 'v1.110.0' })
+  @Property({ history: new HistoryBuilder().added('v1.110.0').stable('v2') })
   hasNextPage?: boolean;
 }
 
-export function mapPerson(person: PersonEntity): PersonResponseDto {
+export function mapPerson(person: Person): PersonResponseDto {
   return {
     id: person.id,
     name: person.name,
-    birthDate: person.birthDate,
+    birthDate: asDateString(person.birthDate),
     thumbnailPath: person.thumbnailPath,
     isHidden: person.isHidden,
     isFavorite: person.isFavorite,
@@ -231,7 +233,7 @@ export function mapPerson(person: PersonEntity): PersonResponseDto {
   };
 }
 
-export function mapFacesWithoutPerson(face: AssetFaceEntity): AssetFaceWithoutPersonResponseDto {
+export function mapFacesWithoutPerson(face: Selectable<AssetFaceTable>): AssetFaceWithoutPersonResponseDto {
   return {
     id: face.id,
     imageHeight: face.imageHeight,
@@ -244,9 +246,16 @@ export function mapFacesWithoutPerson(face: AssetFaceEntity): AssetFaceWithoutPe
   };
 }
 
-export function mapFaces(face: AssetFaceEntity, auth: AuthDto): AssetFaceResponseDto {
+export function mapFaces(face: AssetFace, auth: AuthDto): AssetFaceResponseDto {
   return {
-    ...mapFacesWithoutPerson(face),
+    id: face.id,
+    imageHeight: face.imageHeight,
+    imageWidth: face.imageWidth,
+    boundingBoxX1: face.boundingBoxX1,
+    boundingBoxX2: face.boundingBoxX2,
+    boundingBoxY1: face.boundingBoxY1,
+    boundingBoxY2: face.boundingBoxY2,
+    sourceType: face.sourceType,
     person: face.person?.ownerId === auth.user.id ? mapPerson(face.person) : null,
   };
 }
