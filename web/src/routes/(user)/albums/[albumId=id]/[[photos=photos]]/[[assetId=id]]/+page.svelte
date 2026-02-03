@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { afterNavigate, goto, onNavigate } from '$app/navigation';
+  import { goto, onNavigate } from '$app/navigation';
   import { scrollMemoryClearer } from '$lib/actions/scroll-memory';
   import ActionButton from '$lib/components/ActionButton.svelte';
   import AlbumDescription from '$lib/components/album-page/album-description.svelte';
@@ -29,7 +29,7 @@
   import TagAction from '$lib/components/timeline/actions/TagAction.svelte';
   import AssetSelectControlBar from '$lib/components/timeline/AssetSelectControlBar.svelte';
   import Timeline from '$lib/components/timeline/Timeline.svelte';
-  import { AlbumPageViewMode, AppRoute } from '$lib/constants';
+  import { AlbumPageViewMode } from '$lib/constants';
   import { activityManager } from '$lib/managers/activity-manager.svelte';
   import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
   import { featureFlagsManager } from '$lib/managers/feature-flags-manager.svelte';
@@ -37,6 +37,7 @@
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
   import AlbumOptionsModal from '$lib/modals/AlbumOptionsModal.svelte';
   import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
+  import { Route } from '$lib/route';
   import {
     getAlbumActions,
     getAlbumAssetsActions,
@@ -51,13 +52,7 @@
   import { handlePromiseError } from '$lib/utils';
   import { cancelMultiselect } from '$lib/utils/asset-utils';
   import { handleError } from '$lib/utils/handle-error';
-  import {
-    isAlbumsRoute,
-    isPeopleRoute,
-    isSearchRoute,
-    navigate,
-    type AssetGridRouteSearchParams,
-  } from '$lib/utils/navigation';
+  import { isAlbumsRoute, navigate, type AssetGridRouteSearchParams } from '$lib/utils/navigation';
   import { AlbumUserRole, AssetVisibility, getAlbumInfo, updateAlbumInfo, type AlbumResponseDto } from '@immich/sdk';
   import { CommandPaletteDefaultProvider, Icon, IconButton, modalManager, toastManager } from '@immich/ui';
   import {
@@ -90,7 +85,6 @@
 
   let oldAt: AssetGridRouteSearchParams | null | undefined = $state();
 
-  let backUrl: string = $state(AppRoute.ALBUMS);
   let viewMode: AlbumPageViewMode = $state(AlbumPageViewMode.VIEW);
 
   let timelineManager = $state<TimelineManager>() as TimelineManager;
@@ -98,25 +92,6 @@
 
   const assetInteraction = new AssetInteraction();
   const timelineInteraction = new AssetInteraction();
-
-  afterNavigate(({ from }) => {
-    let url: string | undefined = from?.url?.pathname;
-
-    const route = from?.route?.id;
-    if (isSearchRoute(route)) {
-      url = from?.url.href;
-    }
-
-    if (isAlbumsRoute(route) || isPeopleRoute(route)) {
-      url = AppRoute.ALBUMS;
-    }
-
-    backUrl = url || AppRoute.ALBUMS;
-
-    if (backUrl === AppRoute.SHARED_LINKS) {
-      backUrl = history.state?.backUrl || AppRoute.ALBUMS;
-    }
-  });
 
   const handleFavorite = async () => {
     try {
@@ -157,7 +132,6 @@
       cancelMultiselect(assetInteraction);
       return;
     }
-    await goto(backUrl);
     return;
   };
 
@@ -304,7 +278,7 @@
 
   const onAlbumDelete = async ({ id }: AlbumResponseDto) => {
     if (id === album.id) {
-      await goto(backUrl);
+      await goto(Route.albums());
       viewMode = AlbumPageViewMode.VIEW;
     }
   };
@@ -331,7 +305,7 @@
   };
 
   const { Cast } = $derived(getGlobalActions($t));
-  const { Share } = $derived(getAlbumActions($t, album));
+  const { Share, Close } = $derived(getAlbumActions($t, album, viewMode));
   const { AddAssets, Upload } = $derived(getAlbumAssetsActions($t, album, timelineInteraction.selectedAssets));
 </script>
 
@@ -345,9 +319,9 @@
   onAlbumUserDelete={refreshAlbum}
   onAlbumUpdate={(newAlbum) => (album = newAlbum)}
 />
-<CommandPaletteDefaultProvider name={$t('album')} actions={[AddAssets, Upload]} />
+<CommandPaletteDefaultProvider name={$t('album')} actions={[AddAssets, Upload, Close]} />
 
-<div class="flex overflow-hidden" use:scrollMemoryClearer={{ routeStartsWith: AppRoute.ALBUMS }}>
+<div class="flex overflow-hidden" use:scrollMemoryClearer={{ routeStartsWith: Route.albums() }}>
   <div class="relative w-full shrink">
     <main class="relative h-dvh overflow-hidden px-2 md:px-6 max-md:pt-(--navbar-height-md) pt-(--navbar-height)">
       <Timeline
@@ -511,7 +485,7 @@
       </AssetSelectControlBar>
     {:else}
       {#if viewMode === AlbumPageViewMode.VIEW}
-        <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(backUrl)}>
+        <ControlAppBar showBackButton backIcon={mdiArrowLeft} onClose={() => goto(Route.albums())}>
           {#snippet trailing()}
             <ActionButton action={Cast} />
 

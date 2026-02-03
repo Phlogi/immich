@@ -1,34 +1,49 @@
+import { ProjectionType } from '$lib/constants';
 import { assetViewerManager } from '$lib/managers/asset-viewer-manager.svelte';
 import { authManager } from '$lib/managers/auth-manager.svelte';
 import { eventManager } from '$lib/managers/event-manager.svelte';
+import AssetTagModal from '$lib/modals/AssetTagModal.svelte';
 import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
 import { user as authUser, preferences } from '$lib/stores/user.store';
-import { getSharedLink, sleep } from '$lib/utils';
+import { getAssetJobName, getSharedLink, sleep } from '$lib/utils';
 import { downloadUrl } from '$lib/utils/asset-utils';
 import { openFileUploadDialog } from '$lib/utils/file-uploader';
 import { handleError } from '$lib/utils/handle-error';
 import { getFormatter } from '$lib/utils/i18n';
 import { asQueryString } from '$lib/utils/shared-links';
 import {
+  AssetJobName,
+  AssetTypeEnum,
   AssetVisibility,
   copyAsset,
   deleteAssets,
   getAssetInfo,
   getBaseUrl,
+  runAssetJobs,
   updateAsset,
+  type AssetJobsDto,
   type AssetResponseDto,
 } from '@immich/sdk';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
 import {
   mdiAlertOutline,
+  mdiCogRefreshOutline,
+  mdiContentCopy,
+  mdiDatabaseRefreshOutline,
   mdiDownload,
   mdiDownloadBox,
+  mdiHeadSyncOutline,
   mdiHeart,
   mdiHeartOutline,
+  mdiImageRefreshOutline,
   mdiInformationOutline,
+  mdiMagnifyMinusOutline,
+  mdiMagnifyPlusOutline,
   mdiMotionPauseOutline,
   mdiMotionPlayOutline,
   mdiShareVariantOutline,
+  mdiTagPlusOutline,
+  mdiTune,
 } from '@mdi/js';
 import type { MessageFormatter } from 'svelte-i18n';
 import { get } from 'svelte/store';
@@ -36,6 +51,7 @@ import { get } from 'svelte/store';
 export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) => {
   const sharedLink = getSharedLink();
   const currentAuthUser = get(authUser);
+  const userPreferences = get(preferences);
   const isOwner = !!(currentAuthUser && currentAuthUser.id === asset.ownerId);
 
   const Share: ActionItem = {
@@ -115,13 +131,83 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
     onAction: () => assetViewerManager.toggleDetailPanel(),
   };
 
+  const ZoomIn: ActionItem = {
+    title: $t('zoom_image'),
+    icon: mdiMagnifyPlusOutline,
+    $if: () => assetViewerManager.canZoomIn(),
+    onAction: () => assetViewerManager.emit('Zoom'),
+  };
+
+  const ZoomOut: ActionItem = {
+    title: $t('zoom_image'),
+    icon: mdiMagnifyMinusOutline,
+    $if: () => assetViewerManager.canZoomOut(),
+    onAction: () => assetViewerManager.emit('Zoom'),
+  };
+
+  const Copy: ActionItem = {
+    title: $t('copy_image'),
+    icon: mdiContentCopy,
+    $if: () => assetViewerManager.canCopyImage(),
+    onAction: () => assetViewerManager.emit('Copy'),
+  };
+
   const Info: ActionItem = {
     title: $t('info'),
     icon: mdiInformationOutline,
     type: $t('assets'),
     $if: () => asset.hasMetadata,
     onAction: () => assetViewerManager.toggleDetailPanel(),
-    shortcuts: [{ key: 'i' }],
+    shortcuts: { key: 'i' },
+  };
+
+  const Tag: ActionItem = {
+    title: $t('add_tag'),
+    icon: mdiTagPlusOutline,
+    type: $t('assets'),
+    $if: () => userPreferences.tags.enabled,
+    onAction: () => modalManager.show(AssetTagModal, { assetIds: [asset.id] }),
+    shortcuts: { key: 't' },
+  };
+
+  const Edit: ActionItem = {
+    title: $t('editor'),
+    icon: mdiTune,
+    $if: () =>
+      !sharedLink &&
+      isOwner &&
+      asset.type === AssetTypeEnum.Image &&
+      !asset.livePhotoVideoId &&
+      asset.exifInfo?.projectionType !== ProjectionType.EQUIRECTANGULAR &&
+      !asset.originalPath.toLowerCase().endsWith('.insp') &&
+      !asset.originalPath.toLowerCase().endsWith('.gif') &&
+      !asset.originalPath.toLowerCase().endsWith('.svg'),
+    onAction: () => assetViewerManager.openEditor(),
+  };
+
+  const RefreshFacesJob: ActionItem = {
+    title: getAssetJobName($t, AssetJobName.RefreshFaces),
+    icon: mdiHeadSyncOutline,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.RefreshFaces, assetIds: [asset.id] }),
+  };
+
+  const RefreshMetadataJob: ActionItem = {
+    title: getAssetJobName($t, AssetJobName.RefreshMetadata),
+    icon: mdiDatabaseRefreshOutline,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.RefreshMetadata, assetIds: [asset.id] }),
+  };
+
+  const RegenerateThumbnailJob: ActionItem = {
+    title: getAssetJobName($t, AssetJobName.RegenerateThumbnail),
+    icon: mdiImageRefreshOutline,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.RegenerateThumbnail, assetIds: [asset.id] }),
+  };
+
+  const TranscodeVideoJob: ActionItem = {
+    title: getAssetJobName($t, AssetJobName.TranscodeVideo),
+    icon: mdiCogRefreshOutline,
+    onAction: () => handleRunAssetJob({ name: AssetJobName.TranscodeVideo, assetIds: [asset.id] }),
+    $if: () => asset.type === AssetTypeEnum.Video,
   };
 
   return {
@@ -135,6 +221,15 @@ export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto) =
     Unfavorite,
     PlayMotionPhoto,
     StopMotionPhoto,
+    ZoomIn,
+    ZoomOut,
+    Copy,
+    Tag,
+    Edit,
+    RefreshFacesJob,
+    RefreshMetadataJob,
+    RegenerateThumbnailJob,
+    TranscodeVideoJob,
   };
 };
 
@@ -216,4 +311,15 @@ export const handleReplaceAsset = async (oldAssetId: string) => {
   await deleteAssets({ assetBulkDeleteDto: { ids: [oldAssetId], force: true } });
 
   eventManager.emit('AssetReplace', { oldAssetId, newAssetId });
+};
+
+const handleRunAssetJob = async (dto: AssetJobsDto) => {
+  const $t = await getFormatter();
+
+  try {
+    await runAssetJobs({ assetJobsDto: dto });
+    toastManager.success(getAssetJobName($t, dto.name));
+  } catch (error) {
+    handleError(error, $t('errors.unable_to_submit_job'));
+  }
 };

@@ -537,7 +537,7 @@ const assetInsert = (asset: Partial<Insertable<AssetTable>> = {}) => {
     fileModifiedAt: now,
     localDateTime: now,
     visibility: AssetVisibility.Timeline,
-    editCount: 0,
+    isEdited: false,
   };
 
   return {
@@ -601,8 +601,6 @@ const assetJobStatusInsert = (
     duplicatesDetectedAt: date,
     facesRecognizedAt: date,
     metadataExtractedAt: date,
-    previewAt: date,
-    thumbnailAt: date,
   };
 
   return {
